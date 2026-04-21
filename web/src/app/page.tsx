@@ -69,7 +69,7 @@ export default function Home() {
   if (result) {
     const deleteLink = `${window.location.origin}/delete/${result.slug}?token=${result.secret_token}`;
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <main className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center p-6">
         <div className="max-w-lg w-full space-y-4">
 
           <div className="text-center pb-2">
@@ -146,7 +146,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <main className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center p-6">
       <div className="max-w-xl w-full space-y-6">
 
         <div className="text-center space-y-1.5">
