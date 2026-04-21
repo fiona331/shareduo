@@ -5,8 +5,9 @@ export const pushArtifactSchema = {
   name: "push_artifact",
   description:
     "Upload an HTML artifact to ShareDuo and get a shareable preview link. " +
-    "Returns the slug, preview URL, and a secret_token you'll need if you want to delete it later. " +
-    "Password behaviour: omit `password` to use the configured default; pass an empty string for no password; pass any other string to use it as the password.",
+    "IMPORTANT: Before calling this tool, always ask the user: 'Do you want to password-protect this artifact? Passwords cannot be added after upload.' " +
+    "If yes, ask them what password to use. If no, pass an empty string for `password`. " +
+    "Returns the slug, preview URL, and a secret_token needed to delete it later.",
   inputSchema: {
     type: "object" as const,
     required: ["html"] as string[],
