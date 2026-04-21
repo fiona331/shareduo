@@ -32,7 +32,18 @@ const PORT = parseInt(process.env.PORT ?? "3001", 10);
 // Helpers
 // ---------------------------------------------------------------------------
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function errorPage(title: string, message: string): string {
+  title = escapeHtml(title);
+  message = escapeHtml(message);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,6 +72,8 @@ function errorPage(title: string, message: string): string {
 }
 
 function passwordPage(slug: string, error?: string): string {
+  slug = escapeHtml(slug);
+  const errorHtml = error ? `<p class="error">${escapeHtml(error)}</p>` : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -91,7 +104,7 @@ function passwordPage(slug: string, error?: string): string {
     <p class="logo">ShareDuo</p>
     <h1>Password required</h1>
     <p class="sub">This content is protected. Enter the password to continue.</p>
-    ${error ? `<p class="error">${error}</p>` : ""}
+    ${errorHtml}
     <form method="POST" action="/${slug}">
       <input type="password" name="password" placeholder="Enter password" autofocus required>
       <button type="submit">Continue</button>
