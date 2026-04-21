@@ -1,6 +1,8 @@
 import express from "express";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
+import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -8,20 +10,17 @@ import {
 
 import { pushArtifactSchema, handlePushArtifact }     from "./tools/push_artifact.js";
 import { deleteArtifactSchema, handleDeleteArtifact } from "./tools/delete_artifact.js";
+import { createOAuthProvider } from "./auth/provider.js";
 
 // Validate env at startup
 import "./lib/env.js";
 
 // ---------------------------------------------------------------------------
-// Auth
+// OAuth provider
 // ---------------------------------------------------------------------------
 
-const MCP_TOKEN = process.env.SHAREDUO_MCP_TOKEN;
-if (!MCP_TOKEN) throw new Error("Missing required env var: SHAREDUO_MCP_TOKEN");
-
-function isAuthorized(authHeader: string | undefined): boolean {
-  return authHeader === `Bearer ${MCP_TOKEN}`;
-}
+const oauthProvider = createOAuthProvider();
+const ISSUER_URL = new URL(process.env.SHAREDUO_BASE_URL ?? "https://mcp.shareduo.com");
 
 // ---------------------------------------------------------------------------
 // MCP server factory (one instance per SSE connection)
@@ -68,46 +67,50 @@ function createMcpServer(): Server {
 const app = express();
 app.use(express.json());
 
-// Active SSE sessions keyed by session ID
+// Mount OAuth endpoints at root (/.well-known/*, /authorize, /token, /revoke)
+app.use(
+  mcpAuthRouter({
+    provider: oauthProvider,
+    issuerUrl: ISSUER_URL,
+    resourceName: "ShareDuo MCP",
+  })
+);
+
+// Bearer auth middleware — validates access tokens issued by our OAuth server
+const bearerAuth = requireBearerAuth({
+  verifier: oauthProvider,
+  resourceMetadataUrl: new URL(
+    "/.well-known/oauth-protected-resource",
+    ISSUER_URL
+  ).toString(),
+});
+
+// Active SSE sessions
 const sessions = new Map<string, SSEServerTransport>();
 
-// Health check (no auth required)
+// Health check (no auth)
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-// Establish SSE connection
-app.get("/sse", async (req, res) => {
-  if (!isAuthorized(req.headers.authorization)) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
+// SSE endpoint — requires valid Bearer token
+app.get("/sse", bearerAuth, async (req, res) => {
   const transport = new SSEServerTransport("/messages", res);
   sessions.set(transport.sessionId, transport);
-
-  res.on("close", () => {
-    sessions.delete(transport.sessionId);
-  });
+  res.on("close", () => sessions.delete(transport.sessionId));
 
   const server = createMcpServer();
   await server.connect(transport);
 });
 
-// Receive messages from client
-app.post("/messages", async (req, res) => {
-  if (!isAuthorized(req.headers.authorization)) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
+// Message endpoint — requires valid Bearer token
+app.post("/messages", bearerAuth, async (req, res) => {
   const sessionId = req.query.sessionId as string;
   const transport = sessions.get(sessionId);
   if (!transport) {
     res.status(404).json({ error: "Session not found" });
     return;
   }
-
   await transport.handlePostMessage(req, res);
 });
 
