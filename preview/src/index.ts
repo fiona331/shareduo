@@ -139,6 +139,7 @@ app.get("/:slug", async (c) => {
     "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors 'none'; form-action 'none'"
   );
   c.header("Cache-Control", "no-store");
+  c.header("X-Robots-Tag", "noindex, nofollow");
   // Never set cookies on this domain
 
   // Prepend abuse bar as a separate HTML block before the user's doctype
