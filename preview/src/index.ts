@@ -38,18 +38,21 @@ function errorPage(title: string, message: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} — Artifact Host</title>
+  <title>${title} — ShareDuo</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,sans-serif;background:#0f0f18;color:#e5e7eb;
+    body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#fff 0%,#f9fafb 50%,#eff6ff 100%);
          display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
-    .box{text-align:center;max-width:420px}
-    h1{font-size:1.5rem;margin-bottom:.75rem;color:#f87171}
-    p{color:#9ca3af;line-height:1.6}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:1rem;padding:2.5rem;
+          max-width:380px;width:100%;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .logo{font-size:.75rem;font-weight:600;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-bottom:1.5rem}
+    h1{font-size:1.125rem;font-weight:600;color:#111827;margin-bottom:.5rem}
+    p{color:#6b7280;font-size:.875rem;line-height:1.6}
   </style>
 </head>
 <body>
-  <div class="box">
+  <div class="card">
+    <p class="logo">ShareDuo</p>
     <h1>${title}</h1>
     <p>${message}</p>
   </div>
@@ -63,31 +66,35 @@ function passwordPage(slug: string, error?: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Password Required — Artifact Host</title>
+  <title>Password Required — ShareDuo</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,sans-serif;background:#0f0f18;color:#e5e7eb;
+    body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#fff 0%,#f9fafb 50%,#eff6ff 100%);
          display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
-    .box{width:100%;max-width:360px}
-    h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
-    p{color:#9ca3af;font-size:.875rem;margin-bottom:1.5rem;line-height:1.5}
-    input{width:100%;padding:.75rem 1rem;background:#1f2937;border:1px solid #374151;
-          border-radius:.5rem;color:#f9fafb;font-size:1rem;margin-bottom:.75rem;outline:none}
-    input:focus{border-color:#6366f1}
-    button{width:100%;padding:.75rem;background:#4f46e5;color:#fff;border:none;
-           border-radius:.5rem;font-size:1rem;cursor:pointer;font-weight:500}
-    button:hover{background:#4338ca}
-    .error{color:#f87171;font-size:.875rem;margin-bottom:.75rem}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:1rem;padding:2.5rem;
+          max-width:360px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .logo{font-size:.75rem;font-weight:600;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-bottom:1.5rem}
+    h1{font-size:1.125rem;font-weight:600;color:#111827;margin-bottom:.375rem}
+    .sub{color:#6b7280;font-size:.875rem;margin-bottom:1.5rem;line-height:1.5}
+    input{width:100%;padding:.625rem .875rem;background:#f9fafb;border:1px solid #e5e7eb;
+          border-radius:.75rem;color:#111827;font-size:.9375rem;margin-bottom:.75rem;outline:none;
+          transition:border-color .15s}
+    input:focus{border-color:#d1d5db;background:#fff}
+    button{width:100%;padding:.625rem;background:#111827;color:#fff;border:none;
+           border-radius:.75rem;font-size:.9375rem;cursor:pointer;font-weight:500;transition:background .15s}
+    button:hover{background:#374151}
+    .error{color:#ef4444;font-size:.8125rem;margin-bottom:.75rem}
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>Password Required</h1>
-    <p>This artifact is password protected. Enter the password to view it.</p>
+  <div class="card">
+    <p class="logo">ShareDuo</p>
+    <h1>Password required</h1>
+    <p class="sub">This content is protected. Enter the password to continue.</p>
     ${error ? `<p class="error">${error}</p>` : ""}
     <form method="POST" action="/${slug}">
       <input type="password" name="password" placeholder="Enter password" autofocus required>
-      <button type="submit">View artifact</button>
+      <button type="submit">Continue</button>
     </form>
   </div>
 </body>
