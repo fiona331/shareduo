@@ -1,6 +1,6 @@
-# Artifact Host
+# ShareDuo
 
-A no-account HTML sharing tool. Paste or upload a Claude-generated HTML artifact, get a shareable preview link and a secret delete link — that's it.
+A no-account HTML sharing tool. Paste or upload an HTML artifact, get a shareable preview link and a secret delete link — that's it. Live at [shareduo.com](https://shareduo.com).
 
 ## Local development
 
@@ -55,7 +55,6 @@ R2_BUCKET_NAME=artifacts
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
 PREVIEW_BASE_URL=https://preview.yourdomain.com
-ABUSE_EMAIL=abuse@yourdomain.com
 CRON_SECRET=<random-secret>
 ```
 
@@ -97,7 +96,7 @@ fly deploy
 | `UPSTASH_REDIS_REST_URL` | No | Omit to use in-memory rate limiter |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Omit to use in-memory rate limiter |
 | `PREVIEW_BASE_URL` | Yes | Base URL of the preview server |
-| `ABUSE_EMAIL` | Yes | Email shown in the abuse report bar |
+| `ABUSE_EMAIL` | No | Email for abuse reports (optional) |
 | `CRON_SECRET` | Yes | Bearer token for the cleanup cron endpoint |
 
 ## Taking down abusive content
