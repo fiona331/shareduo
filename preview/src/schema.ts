@@ -14,6 +14,7 @@ export const shares = pgTable("shares", {
   deleted_at: timestamp("deleted_at"),
   abuse_flagged_at: timestamp("abuse_flagged_at"),
   uploader_ip_hash: text("uploader_ip_hash"),
+  password_hash: text("password_hash"),
 });
 
 export type Share = typeof shares.$inferSelect;

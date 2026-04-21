@@ -11,6 +11,7 @@ interface UploadResult {
 
 export default function Home() {
   const [html, setHtml] = useState("");
+  const [password, setPassword] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
@@ -49,6 +50,7 @@ export default function Home() {
     setError(null);
     const formData = new FormData();
     formData.append("html", html);
+    if (password.trim()) formData.append("password", password.trim());
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
@@ -123,6 +125,7 @@ export default function Home() {
             onClick={() => {
               setResult(null);
               setHtml("");
+              setPassword("");
               setError(null);
             }}
             className="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors"
@@ -188,6 +191,19 @@ export default function Home() {
           className="w-full h-48 bg-gray-900 border border-gray-700 rounded-lg p-3 font-mono text-sm text-gray-100 placeholder-gray-600 resize-none focus:outline-none focus:border-gray-500"
           spellCheck={false}
         />
+
+        <div className="space-y-1">
+          <label className="text-sm text-gray-400">
+            Password protect <span className="text-gray-600">(optional)</span>
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Leave blank for public access"
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-gray-500"
+          />
+        </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 

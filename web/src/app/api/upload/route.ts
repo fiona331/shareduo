@@ -68,12 +68,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const password = formData.get("password") as string | null;
+
   const slug = generateSlug();
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = await bcrypt.hash(rawToken, 10);
   const ipHash = createHash("sha256").update(ip).digest("hex");
   const storageKey = `uploads/${slug}.html`;
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const passwordHash =
+    password && password.trim() ? await bcrypt.hash(password.trim(), 10) : null;
 
   await uploadHtml(storageKey, html);
 
@@ -83,6 +87,7 @@ export async function POST(req: NextRequest) {
     storage_key: storageKey,
     expires_at: expiresAt,
     uploader_ip_hash: ipHash,
+    password_hash: passwordHash,
   });
 
   const previewBase =
