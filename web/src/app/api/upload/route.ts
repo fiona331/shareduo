@@ -38,10 +38,12 @@ export async function POST(req: NextRequest) {
   }
 
   let html: string;
+  let password: string | null = null;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const pasted = formData.get("html") as string | null;
+    password = formData.get("password") as string | null;
 
     if (file) {
       if (file.size > MAX_BYTES) {
@@ -67,8 +69,6 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-
-  const password = formData.get("password") as string | null;
 
   const slug = generateSlug();
   const rawToken = randomBytes(32).toString("hex");
