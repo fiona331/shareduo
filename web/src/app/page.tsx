@@ -238,6 +238,12 @@ export default function Home() {
         <p className="text-center text-xs text-gray-400">
           Kept for 30 days · Max 5 MB · No account needed
         </p>
+        <p className="text-center text-xs text-gray-300">
+          Made with ♥ in San Francisco ·{" "}
+          <a href="mailto:hello@shareduo.com" className="hover:text-gray-400 transition-colors">
+            Send feedback
+          </a>
+        </p>
 
       </div>
     </main>

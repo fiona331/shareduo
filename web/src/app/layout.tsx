@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Artifact Host",
-  description: "Share Claude-generated HTML artifacts. No account required.",
+  title: "ShareDuo",
+  description: "Share HTML artifacts instantly. No account required.",
 };
 
 export default function RootLayout({
