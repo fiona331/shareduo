@@ -21,13 +21,15 @@ cp .env.example preview/.env
 # 4. Install dependencies
 cd web && npm install
 cd ../preview && npm install
+cd ../mcp && npm install
 
 # 5. Push the database schema
 cd ../web && npm run db:push
 
-# 6. Run both servers (two terminals)
+# 6. Run all three servers (three terminals)
 cd web && npm run dev          # http://localhost:3000
 cd preview && npm run dev      # http://localhost:3001
+cd mcp && npm run dev          # http://localhost:3002
 ```
 
 ## Deploy in under 15 minutes
@@ -55,6 +57,7 @@ R2_BUCKET_NAME=artifacts
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
 PREVIEW_BASE_URL=https://preview.yourdomain.com
+SHAREDUO_API_KEY=<random 32-byte hex — generate with: openssl rand -hex 32>
 CRON_SECRET=<random-secret>
 ```
 
@@ -65,26 +68,55 @@ Add a Vercel Cron job in `vercel.json`:
 }
 ```
 
-### /preview → Railway or Fly.io
+### /preview → Railway
 
-**Railway:**
-```bash
-cd preview
-npm run build
-# Push to a repo and connect in Railway dashboard
-# Set the same DATABASE_URL, R2_*, ABUSE_EMAIL env vars
-# Start command: node dist/index.js
+Connect the repo in Railway, set root directory to `/preview`, and add:
+
+```
+DATABASE_URL=...
+R2_ENDPOINT=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=artifacts
 ```
 
-**Fly.io:**
-```bash
-cd preview
-fly launch
-fly secrets set DATABASE_URL="..." R2_ENDPOINT="..." # etc.
-fly deploy
+Build command: `npm install && npm run build`
+Start command: `node dist/index.js`
+
+### /mcp → Railway (second service)
+
+Connect the same repo, set root directory to `/mcp`, and add:
+
 ```
+SHAREDUO_API_KEY=<same key as Vercel>
+SHAREDUO_BASE_URL=https://shareduo.com
+SHAREDUO_MCP_TOKEN=<random 32-byte hex — generate with: openssl rand -hex 32>
+SHAREDUO_DEFAULT_PASSWORD=
+```
+
+Build command: `npm install && npm run build`
+Start command: `node dist/index.js`
+
+## Using the MCP server
+
+Once deployed, add the ShareDuo connector to Claude Code:
+
+```bash
+claude mcp add shareduo -t sse -s user \
+  -H "Authorization: Bearer <SHAREDUO_MCP_TOKEN>" \
+  -- https://mcp.yourdomain.com
+```
+
+Or add it in Claude Cowork / claude.ai via **Add custom connector**:
+- **Remote MCP server URL:** `https://mcp.yourdomain.com`
+- **OAuth Client ID:** `shareduo`
+- **OAuth Client Secret:** `<SHAREDUO_MCP_TOKEN>`
+
+Then just say **"push this to ShareDuo"** and Claude will upload the artifact and return a preview link.
 
 ## Environment variables
+
+### /web (Vercel)
 
 | Variable | Required | Description |
 |---|---|---|
@@ -96,8 +128,27 @@ fly deploy
 | `UPSTASH_REDIS_REST_URL` | No | Omit to use in-memory rate limiter |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Omit to use in-memory rate limiter |
 | `PREVIEW_BASE_URL` | Yes | Base URL of the preview server |
-| `ABUSE_EMAIL` | No | Email for abuse reports (optional) |
+| `SHAREDUO_API_KEY` | Yes | API key for programmatic uploads (MCP) |
 | `CRON_SECRET` | Yes | Bearer token for the cleanup cron endpoint |
+
+### /preview (Railway)
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `R2_ENDPOINT` | Yes | S3-compatible endpoint |
+| `R2_ACCESS_KEY_ID` | Yes | S3 access key |
+| `R2_SECRET_ACCESS_KEY` | Yes | S3 secret key |
+| `R2_BUCKET_NAME` | Yes | Bucket name |
+
+### /mcp (Railway)
+
+| Variable | Required | Description |
+|---|---|---|
+| `SHAREDUO_API_KEY` | Yes | Must match the key set on Vercel |
+| `SHAREDUO_BASE_URL` | Yes | Base URL of the web app (e.g. `https://shareduo.com`) |
+| `SHAREDUO_MCP_TOKEN` | Yes | Shared secret for MCP OAuth authentication |
+| `SHAREDUO_DEFAULT_PASSWORD` | No | Default password applied to all MCP uploads |
 
 ## Taking down abusive content
 
