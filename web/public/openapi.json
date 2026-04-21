@@ -1,0 +1,103 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ShareDuo API",
+    "version": "1.0.0",
+    "description": "Programmatic access to ShareDuo HTML artifact sharing."
+  },
+  "servers": [
+    { "url": "https://shareduo.com", "description": "Production" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Pass your SHAREDUO_API_KEY as a Bearer token."
+      }
+    },
+    "schemas": {
+      "UploadResponse": {
+        "type": "object",
+        "required": ["slug", "secret_token", "preview_url", "delete_url"],
+        "properties": {
+          "slug":         { "type": "string", "example": "ab12cd" },
+          "secret_token": { "type": "string", "description": "One-time delete credential. Store securely — never logged." },
+          "preview_url":  { "type": "string", "format": "uri" },
+          "delete_url":   { "type": "string", "example": "/api/ab12cd" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/upload": {
+      "post": {
+        "operationId": "uploadArtifact",
+        "summary": "Upload an HTML artifact",
+        "description": "Accepts raw HTML (as a form field or file). Returns a preview URL and a secret delete token. Authenticated requests bypass IP rate limiting.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "html":     { "type": "string", "description": "Raw HTML string (mutually exclusive with file)" },
+                  "file":     { "type": "string", "format": "binary", "description": "HTML file upload (mutually exclusive with html)" },
+                  "password": { "type": "string", "description": "Optional password to protect the artifact" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UploadResponse" } } } },
+          "400": { "description": "Bad request (missing HTML or invalid content)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Invalid or missing API key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "413": { "description": "Payload too large (max 5 MB)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "429": { "description": "Rate limit exceeded (unauthenticated requests only)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/{slug}": {
+      "delete": {
+        "operationId": "deleteArtifact",
+        "summary": "Delete an artifact",
+        "description": "Soft-deletes an artifact by slug. Requires the secret_token returned at upload time.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "The artifact slug" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["secret_token"],
+                "properties": {
+                  "secret_token": { "type": "string", "description": "The token returned by uploadArtifact" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "400": { "description": "Missing secret_token" },
+          "401": { "description": "Invalid API key" },
+          "403": { "description": "Invalid secret_token" },
+          "404": { "description": "Artifact not found or already deleted" }
+        }
+      }
+    }
+  }
+}

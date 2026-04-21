@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { shares } from "@/lib/db/schema";
 import { uploadHtml } from "@/lib/storage";
 import { checkRateLimit } from "@/lib/ratelimit";
+import { verifyApiKey } from "@/lib/apikey";
 
 const SLUG_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -26,10 +27,19 @@ function getIp(req: NextRequest): string {
 
 export async function POST(req: NextRequest) {
   const ip = getIp(req);
+  const authHeader = req.headers.get("authorization");
 
-  const allowed = await checkRateLimit(ip);
-  if (!allowed) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  if (authHeader !== null) {
+    // API key path — must present a valid key, no IP rate limiting
+    if (!verifyApiKey(authHeader)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else {
+    // Web UI path — enforce IP rate limit
+    const allowed = await checkRateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
   }
 
   const contentLength = req.headers.get("content-length");

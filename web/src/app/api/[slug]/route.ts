@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { verifyApiKey } from "@/lib/apikey";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { shares } from "@/lib/db/schema";
@@ -10,6 +11,12 @@ export async function DELETE(
   { params }: { params: { slug: string } }
 ) {
   const { slug } = params;
+  const authHeader = req.headers.get("authorization");
+
+  // If an Authorization header is present, it must be a valid API key
+  if (authHeader !== null && !verifyApiKey(authHeader)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let secret_token: string;
   try {
