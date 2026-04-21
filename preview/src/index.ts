@@ -26,7 +26,6 @@ const s3 = new S3Client({
 });
 
 const BUCKET = process.env.R2_BUCKET_NAME!;
-const ABUSE_EMAIL = process.env.ABUSE_EMAIL ?? "abuse@yourdomain.com";
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
 // ---------------------------------------------------------------------------
@@ -95,10 +94,6 @@ function passwordPage(slug: string, error?: string): string {
 </html>`;
 }
 
-function abuseBar(slug: string): string {
-  const subject = encodeURIComponent(`Abuse report: ${slug}`);
-  return `<div style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#1a1a2e;color:#e5e7eb;font-family:system-ui,sans-serif;font-size:13px;line-height:1;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span>This is user-uploaded content hosted by Artifact Host</span><a href="mailto:${ABUSE_EMAIL}?subject=${subject}" style="color:#fca5a5;text-decoration:none;margin-left:16px;white-space:nowrap">Report abuse</a></div>`;
-}
 
 // ---------------------------------------------------------------------------
 // App
@@ -185,7 +180,7 @@ app.get("/:slug", async (c) => {
   // Never set cookies on this domain
 
   // Prepend abuse bar as a separate HTML block before the user's doctype
-  return c.body(abuseBar(slug) + userHtml, 200);
+  return c.body(userHtml, 200);
 });
 
 app.post("/:slug", async (c) => {
@@ -243,7 +238,7 @@ app.post("/:slug", async (c) => {
   c.header("Cache-Control", "no-store");
   c.header("X-Robots-Tag", "noindex, nofollow");
 
-  return c.body(abuseBar(slug) + userHtml, 200);
+  return c.body(userHtml, 200);
 });
 
 app.get("/", (c) =>
