@@ -94,7 +94,7 @@ app.get("/health", (_req, res) => {
 });
 
 // SSE endpoint — requires valid Bearer token
-app.get("/sse", bearerAuth, async (req, res) => {
+app.get("/", bearerAuth, async (req, res) => {
   const transport = new SSEServerTransport("/messages", res);
   sessions.set(transport.sessionId, transport);
   res.on("close", () => sessions.delete(transport.sessionId));
