@@ -93,29 +93,46 @@ app.use(
   })
 );
 
-// Password form submission — dedicated path so we don't clash with the SDK's
-// POST /authorize handler (which expects an OAuth authorization request body)
-app.post("/authorize/verify", express.urlencoded({ extended: false }), (req, res) => {
-  const { token, code_challenge, redirect_uri, state } = req.body as Record<string, string>;
+// Password form submission — on a path OUTSIDE /authorize so it doesn't get
+// routed through the SDK's authorization sub-router (which applies rate
+// limiting and its own body parsing that can shadow our handler).
+app.post("/auth-verify", express.urlencoded({ extended: false }), (req, res) => {
+  try {
+    const body = (req.body ?? {}) as Record<string, string>;
+    const token          = body.token          ?? "";
+    const code_challenge = body.code_challenge ?? "";
+    const redirect_uri   = body.redirect_uri   ?? "";
+    const state          = body.state          ?? "";
 
-  if (!checkMcpToken(token)) {
-    res.setHeader("Content-Type", "text/html");
-    res.send(
-      passwordPageHtml({
-        codeChallenge: code_challenge,
-        redirectUri:   redirect_uri,
-        state:         state ?? "",
-        error:         "Incorrect token. Please try again.",
-      })
+    if (!code_challenge || !redirect_uri) {
+      res.status(400).send("Missing required parameters. Please restart the connection from Claude.");
+      return;
+    }
+
+    if (!checkMcpToken(token)) {
+      res.setHeader("Content-Type", "text/html");
+      res.send(
+        passwordPageHtml({
+          codeChallenge: code_challenge,
+          redirectUri:   redirect_uri,
+          state,
+          error:         "Incorrect token. Please try again.",
+        })
+      );
+      return;
+    }
+
+    const code = issueAuthCode(code_challenge, redirect_uri, state || undefined);
+    const redirectUrl = new URL(redirect_uri);
+    redirectUrl.searchParams.set("code", code);
+    if (state) redirectUrl.searchParams.set("state", state);
+    res.redirect(redirectUrl.toString());
+  } catch (err) {
+    console.error("[/auth-verify] error:", err);
+    res.status(500).send(
+      "Internal error: " + (err instanceof Error ? err.message : String(err))
     );
-    return;
   }
-
-  const code = issueAuthCode(code_challenge, redirect_uri, state);
-  const redirectUrl = new URL(redirect_uri);
-  redirectUrl.searchParams.set("code", code);
-  if (state) redirectUrl.searchParams.set("state", state);
-  res.redirect(redirectUrl.toString());
 });
 
 // Bearer auth middleware

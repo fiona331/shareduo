@@ -164,7 +164,7 @@ export function passwordPageHtml(params: {
     <h1>Connect to ShareDuo</h1>
     <p class="sub">Enter your access token to connect Claude.</p>
     ${params.error ? `<p class="error">${escapeHtml(params.error)}</p>` : ""}
-    <form method="POST" action="/authorize/verify">
+    <form method="POST" action="/auth-verify">
       <input type="hidden" name="code_challenge" value="${escapeHtml(params.codeChallenge)}">
       <input type="hidden" name="redirect_uri"   value="${escapeHtml(params.redirectUri)}">
       <input type="hidden" name="state"          value="${escapeHtml(params.state)}">
