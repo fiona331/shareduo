@@ -1,6 +1,9 @@
+import { randomUUID } from "crypto";
 import express from "express";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import {
@@ -25,7 +28,7 @@ const oauthProvider = createOAuthProvider();
 const ISSUER_URL = new URL(process.env.MCP_BASE_URL ?? "https://mcp.shareduo.com");
 
 // ---------------------------------------------------------------------------
-// MCP server factory (one instance per SSE connection)
+// MCP server factory (one instance per connection)
 // ---------------------------------------------------------------------------
 
 function createMcpServer(): Server {
@@ -111,15 +114,21 @@ const bearerAuth = requireBearerAuth({
   ).toString(),
 });
 
-// Active SSE sessions
-const sessions = new Map<string, SSEServerTransport>();
+// ---------------------------------------------------------------------------
+// Session stores
+// ---------------------------------------------------------------------------
 
-// Health check (no auth)
+type AnyTransport = StreamableHTTPServerTransport | SSEServerTransport;
+const sessions = new Map<string, AnyTransport>();
+
+// ---------------------------------------------------------------------------
+// Health + favicon (no auth)
+// ---------------------------------------------------------------------------
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-// Favicon — shown as the connector icon in claude.ai
 app.get("/favicon.svg", (_req, res) => {
   res.setHeader("Content-Type", "image/svg+xml");
   res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -136,7 +145,54 @@ app.get("/favicon.ico", (_req, res) => {
   res.redirect("/favicon.svg");
 });
 
-// SSE endpoint — requires valid Bearer token
+// ---------------------------------------------------------------------------
+// Streamable HTTP transport (protocol 2025-11-25) — used by claude.ai/Cowork
+// POST/GET/DELETE /mcp
+// ---------------------------------------------------------------------------
+
+app.all("/mcp", bearerAuth, async (req, res) => {
+  try {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+    if (sessionId && sessions.has(sessionId)) {
+      const existing = sessions.get(sessionId)!;
+      if (!(existing instanceof StreamableHTTPServerTransport)) {
+        res.status(400).json({ error: "Session uses a different transport" });
+        return;
+      }
+      await existing.handleRequest(req, res, req.body);
+      return;
+    }
+
+    if (!sessionId && req.method === "POST" && isInitializeRequest(req.body)) {
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => {
+          sessions.set(sid, transport);
+        },
+      });
+      transport.onclose = () => {
+        if (transport.sessionId) sessions.delete(transport.sessionId);
+      };
+      const server = createMcpServer();
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    res.status(400).json({ error: "Invalid request" });
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// SSE transport (protocol 2024-11-05) — used by Claude Code CLI
+// GET / establishes stream, POST /messages sends messages
+// ---------------------------------------------------------------------------
+
 app.get("/", bearerAuth, async (req, res) => {
   const transport = new SSEServerTransport("/messages", res);
   sessions.set(transport.sessionId, transport);
@@ -146,11 +202,10 @@ app.get("/", bearerAuth, async (req, res) => {
   await server.connect(transport);
 });
 
-// Message endpoint — requires valid Bearer token
 app.post("/messages", bearerAuth, async (req, res) => {
   const sessionId = req.query.sessionId as string;
   const transport = sessions.get(sessionId);
-  if (!transport) {
+  if (!transport || !(transport instanceof SSEServerTransport)) {
     res.status(404).json({ error: "Session not found" });
     return;
   }
