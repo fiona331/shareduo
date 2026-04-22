@@ -88,9 +88,13 @@ app.use(
   })
 );
 
-// Dev logging — method/path/headers. Body is logged inside handlers we
-// control (below). SDK handlers parse body themselves, so we can't see
-// their body here.
+// Parse bodies at app level so our logger and downstream handlers both
+// see req.body. Express body parsers are idempotent, so the SDK's own
+// urlencoded middleware will no-op once we've already parsed.
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// Dev logging — path, headers, plus redacted body for /token and /register.
 app.use((req, res, next) => {
   const p = req.path;
   if (
@@ -106,14 +110,25 @@ app.use((req, res, next) => {
     const hasSess = req.headers["mcp-session-id"] ? "✓sess" : "";
     const ct = req.headers["content-type"] ?? "-";
     console.log(`[req] ${req.method} ${p} ${hasAuth} ${hasSess} ct=${ct}`);
+
+    if (p === "/token" || p === "/register") {
+      const body = { ...(req.body ?? {}) } as Record<string, unknown>;
+      if (body.client_secret) body.client_secret = "***";
+      if (typeof body.code_verifier === "string") {
+        body.code_verifier = `len=${body.code_verifier.length}`;
+      }
+      if (typeof body.code === "string") {
+        body.code = `${body.code.slice(0, 8)}...`;
+      }
+      console.log(`[${p} body]`, JSON.stringify(body));
+    }
+
     res.on("finish", () => {
       console.log(`[res] ${req.method} ${p} → ${res.statusCode}`);
     });
   }
   next();
 });
-
-app.use(express.json());
 
 // Mount OAuth endpoints (/.well-known/*, /authorize GET, /token, /revoke)
 app.use(
