@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 import type { Response } from "express";
 import type {
   OAuthServerProvider,
@@ -20,13 +20,23 @@ function generateToken(bytes = 32): string {
   return randomBytes(bytes).toString("hex");
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ---------------------------------------------------------------------------
-// In-memory stores (cleared on restart — users re-auth automatically via
-// the refresh token flow, or just reconnect the connector)
+// In-memory stores
 // ---------------------------------------------------------------------------
 
 interface AuthCodeRecord {
   codeChallenge: string;
+  redirectUri: string;
+  state?: string;
   expiresAt: number;
 }
 
@@ -35,33 +45,55 @@ interface TokenRecord {
   expiresAt: number;
 }
 
-const authCodes  = new Map<string, AuthCodeRecord>();
+const authCodes    = new Map<string, AuthCodeRecord>();
 const accessTokens  = new Map<string, TokenRecord>();
 const refreshTokens = new Map<string, TokenRecord>();
 
 // ---------------------------------------------------------------------------
-// Pre-registered client
-// Client ID:     shareduo
-// Client Secret: SHAREDUO_MCP_TOKEN env var
-//
-// The SDK's token handler validates client_secret automatically against the
-// value returned here, so we never need to check it ourselves.
+// Public helper — called by POST /authorize in index.ts after password check
+// ---------------------------------------------------------------------------
+
+export function issueAuthCode(
+  codeChallenge: string,
+  redirectUri: string,
+  state?: string
+): string {
+  const code = generateToken(32);
+  authCodes.set(code, {
+    codeChallenge,
+    redirectUri,
+    state,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+  });
+  return code;
+}
+
+export function checkMcpToken(provided: string): boolean {
+  const expected = process.env.SHAREDUO_MCP_TOKEN ?? "";
+  if (!expected || !provided) return false;
+  const a = Buffer.alloc(Math.max(provided.length, expected.length));
+  const b = Buffer.alloc(Math.max(provided.length, expected.length));
+  Buffer.from(provided).copy(a);
+  Buffer.from(expected).copy(b);
+  return timingSafeEqual(a, b) && provided.length === expected.length;
+}
+
+// ---------------------------------------------------------------------------
+// Registered client — public client (no secret), secured by password page
 // ---------------------------------------------------------------------------
 
 function getRegisteredClient(): OAuthClientInformationFull {
   return {
     client_id: "shareduo",
-    client_secret: process.env.SHAREDUO_MCP_TOKEN!,
-    client_secret_expires_at: 0, // never expires
     client_id_issued_at: 0,
     redirect_uris: [
-      "https://claude.ai/api/mcp/auth_callback",  // Cowork / claude.ai
-      "http://localhost",                           // Claude Code (any port)
-      "http://127.0.0.1",                           // Claude Code (any port)
+      "https://claude.ai/api/mcp/auth_callback",
+      "http://localhost",
+      "http://127.0.0.1",
     ],
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
-    token_endpoint_auth_method: "client_secret_post",
+    token_endpoint_auth_method: "none", // public client — secured by password page
   };
 }
 
@@ -70,8 +102,59 @@ const clientsStore: OAuthRegisteredClientsStore = {
     if (clientId === "shareduo") return getRegisteredClient();
     return undefined;
   },
-  // No dynamic registration — only the pre-registered "shareduo" client
 };
+
+// ---------------------------------------------------------------------------
+// Password page HTML
+// ---------------------------------------------------------------------------
+
+export function passwordPageHtml(params: {
+  codeChallenge: string;
+  redirectUri: string;
+  state: string;
+  error?: string;
+}): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect to ShareDuo</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#fff 0%,#f9fafb 50%,#eff6ff 100%);
+         display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:1rem;padding:2.5rem;
+          max-width:360px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .logo{font-size:.75rem;font-weight:600;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-bottom:1.5rem}
+    h1{font-size:1.125rem;font-weight:600;color:#111827;margin-bottom:.375rem}
+    .sub{color:#6b7280;font-size:.875rem;margin-bottom:1.5rem;line-height:1.5}
+    input{width:100%;padding:.625rem .875rem;background:#f9fafb;border:1px solid #e5e7eb;
+          border-radius:.75rem;color:#111827;font-size:.9375rem;margin-bottom:.75rem;outline:none}
+    input:focus{border-color:#d1d5db;background:#fff}
+    button{width:100%;padding:.625rem;background:#111827;color:#fff;border:none;
+           border-radius:.75rem;font-size:.9375rem;cursor:pointer;font-weight:500}
+    button:hover{background:#374151}
+    .error{color:#ef4444;font-size:.8125rem;margin-bottom:.75rem}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p class="logo">ShareDuo</p>
+    <h1>Connect to ShareDuo</h1>
+    <p class="sub">Enter your access token to connect Claude.</p>
+    ${params.error ? `<p class="error">${escapeHtml(params.error)}</p>` : ""}
+    <form method="POST" action="/authorize">
+      <input type="hidden" name="code_challenge" value="${escapeHtml(params.codeChallenge)}">
+      <input type="hidden" name="redirect_uri"   value="${escapeHtml(params.redirectUri)}">
+      <input type="hidden" name="state"          value="${escapeHtml(params.state)}">
+      <input type="password" name="token" placeholder="Enter access token" autofocus required>
+      <button type="submit">Connect</button>
+    </form>
+  </div>
+</body>
+</html>`;
+}
 
 // ---------------------------------------------------------------------------
 // OAuth provider
@@ -83,24 +166,20 @@ export function createOAuthProvider(): OAuthServerProvider {
       return clientsStore;
     },
 
-    // Auto-authorize: security is enforced at the token exchange step
-    // (SDK validates client_secret == SHAREDUO_MCP_TOKEN). The authorize
-    // step just needs to issue a code and redirect.
+    // Show password page — actual code issuance happens in POST /authorize
     async authorize(
       _client: OAuthClientInformationFull,
       params: AuthorizationParams,
       res: Response
     ): Promise<void> {
-      const code = generateToken(32);
-      authCodes.set(code, {
-        codeChallenge: params.codeChallenge,
-        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-      });
-
-      const redirectUrl = new URL(params.redirectUri);
-      redirectUrl.searchParams.set("code", code);
-      if (params.state) redirectUrl.searchParams.set("state", params.state);
-      res.redirect(redirectUrl.toString());
+      res.setHeader("Content-Type", "text/html");
+      res.send(
+        passwordPageHtml({
+          codeChallenge: params.codeChallenge,
+          redirectUri:   params.redirectUri,
+          state:         params.state ?? "",
+        })
+      );
     },
 
     async challengeForAuthorizationCode(
@@ -126,7 +205,7 @@ export function createOAuthProvider(): OAuthServerProvider {
 
       const accessToken  = generateToken(32);
       const refreshToken = generateToken(32);
-      const expiresIn    = 3600; // 1 hour
+      const expiresIn    = 3600;
 
       accessTokens.set(accessToken, {
         clientId: client.client_id,
@@ -134,13 +213,13 @@ export function createOAuthProvider(): OAuthServerProvider {
       });
       refreshTokens.set(refreshToken, {
         clientId: client.client_id,
-        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
       });
 
       return {
-        access_token: accessToken,
-        token_type:   "bearer",
-        expires_in:   expiresIn,
+        access_token:  accessToken,
+        token_type:    "bearer",
+        expires_in:    expiresIn,
         refresh_token: refreshToken,
       };
     },

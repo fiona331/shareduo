@@ -10,7 +10,7 @@ import {
 
 import { pushArtifactSchema, handlePushArtifact }     from "./tools/push_artifact.js";
 import { deleteArtifactSchema, handleDeleteArtifact } from "./tools/delete_artifact.js";
-import { createOAuthProvider } from "./auth/provider.js";
+import { createOAuthProvider, checkMcpToken, issueAuthCode, passwordPageHtml } from "./auth/provider.js";
 
 // Validate env at startup
 import "./lib/env.js";
@@ -77,6 +77,30 @@ app.use(
     resourceName: "ShareDuo MCP",
   })
 );
+
+// Password form submission — validates SHAREDUO_MCP_TOKEN, issues auth code, redirects back
+app.post("/authorize", express.urlencoded({ extended: false }), (req, res) => {
+  const { token, code_challenge, redirect_uri, state } = req.body as Record<string, string>;
+
+  if (!checkMcpToken(token)) {
+    res.setHeader("Content-Type", "text/html");
+    res.send(
+      passwordPageHtml({
+        codeChallenge: code_challenge,
+        redirectUri:   redirect_uri,
+        state:         state ?? "",
+        error:         "Incorrect token. Please try again.",
+      })
+    );
+    return;
+  }
+
+  const code = issueAuthCode(code_challenge, redirect_uri, state);
+  const redirectUrl = new URL(redirect_uri);
+  redirectUrl.searchParams.set("code", code);
+  if (state) redirectUrl.searchParams.set("state", state);
+  res.redirect(redirectUrl.toString());
+});
 
 // Bearer auth middleware — validates access tokens issued by our OAuth server
 const bearerAuth = requireBearerAuth({
