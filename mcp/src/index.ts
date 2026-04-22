@@ -20,7 +20,9 @@ import "./lib/env.js";
 // ---------------------------------------------------------------------------
 
 const oauthProvider = createOAuthProvider();
-const ISSUER_URL = new URL(process.env.SHAREDUO_BASE_URL ?? "https://mcp.shareduo.com");
+// MCP_BASE_URL is this server's own public URL (used for OAuth metadata/issuer)
+// SHAREDUO_BASE_URL is the ShareDuo web app URL (used for uploading artifacts)
+const ISSUER_URL = new URL(process.env.MCP_BASE_URL ?? "https://mcp.shareduo.com");
 
 // ---------------------------------------------------------------------------
 // MCP server factory (one instance per SSE connection)
