@@ -54,8 +54,11 @@ function getRegisteredClient(): OAuthClientInformationFull {
     client_secret: process.env.SHAREDUO_MCP_TOKEN!,
     client_secret_expires_at: 0, // never expires
     client_id_issued_at: 0,
-    // Loopback URIs: SDK allows any port per RFC 8252 §7.3
-    redirect_uris: ["http://localhost", "http://127.0.0.1"],
+    redirect_uris: [
+      "https://claude.ai/api/mcp/auth_callback",  // Cowork / claude.ai
+      "http://localhost",                           // Claude Code (any port)
+      "http://127.0.0.1",                           // Claude Code (any port)
+    ],
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
     token_endpoint_auth_method: "client_secret_post",
