@@ -1,4 +1,5 @@
-import { pgTable, uuid, text, boolean, timestamp } from "drizzle-orm/pg-core";
+// MIRROR: keep in sync with web/src/lib/db/schema.ts — both services query this table.
+import { pgTable, uuid, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const shares = pgTable("shares", {
@@ -15,6 +16,8 @@ export const shares = pgTable("shares", {
   abuse_flagged_at: timestamp("abuse_flagged_at"),
   uploader_ip_hash: text("uploader_ip_hash"),
   password_hash: text("password_hash"),
+  view_count: integer("view_count").default(0).notNull(),
+  last_viewed_at: timestamp("last_viewed_at"),
 });
 
 export type Share = typeof shares.$inferSelect;

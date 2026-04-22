@@ -4,9 +4,10 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { shares } from "./schema.js";
+import { isBot } from "./lib/bots.js";
 
 // ---------------------------------------------------------------------------
 // Infrastructure clients
@@ -94,6 +95,27 @@ function applySecurityHeaders(c: {
   c.header("Cache-Control", "no-store");
   c.header("X-Robots-Tag", "noindex, nofollow");
   // Never set cookies on this domain — previews must stay stateless
+}
+
+// ---------------------------------------------------------------------------
+// View counter — fire-and-forget increment on successful preview serve
+// ---------------------------------------------------------------------------
+//
+// Hono on Node (Railway) doesn't have executionCtx.waitUntil. We rely on the
+// long-lived Node process to keep the detached promise alive past the
+// handler return. Accepting occasional lost counts on deploy/SIGTERM — a
+// view counter isn't worth extra infra complexity.
+
+function incrementViewCount(slug: string, userAgent: string | null | undefined): void {
+  if (isBot(userAgent)) return;
+  void db
+    .update(shares)
+    .set({
+      view_count:     sql`${shares.view_count} + 1`, // atomic under row lock
+      last_viewed_at: sql`now()`,                     // DB clock, avoids skew
+    })
+    .where(eq(shares.slug, slug))
+    .catch((err) => console.error("[view-count] update failed:", err));
 }
 
 function errorPage(title: string, message: string): string {
@@ -241,6 +263,7 @@ app.get("/:slug", async (c) => {
     );
   }
 
+  incrementViewCount(slug, c.req.header("User-Agent"));
   applySecurityHeaders(c);
   return c.body(userHtml, 200);
 });
@@ -292,6 +315,7 @@ app.post("/:slug", async (c) => {
     return c.html(errorPage("Error", "Could not load artifact content."), 500);
   }
 
+  incrementViewCount(slug, c.req.header("User-Agent"));
   applySecurityHeaders(c);
   return c.body(userHtml, 200);
 });

@@ -7,6 +7,7 @@ interface UploadResult {
   slug: string;
   secret_token: string;
   preview_url: string;
+  manage_url: string;
   delete_url: string;
   expires_at: string;
 }
@@ -80,7 +81,11 @@ export default function Home() {
   };
 
   if (result) {
-    const deleteLink = `${window.location.origin}/delete/${result.slug}?token=${result.secret_token}`;
+    // Prefer the server-built manage_url when present (it uses
+    // SHAREDUO_PUBLIC_URL), fall back to building from the current origin.
+    const manageLink =
+      result.manage_url ??
+      `${window.location.origin}/manage/${result.slug}?token=${result.secret_token}`;
     return (
       <main className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center p-6">
         <div className="max-w-lg w-full space-y-4">
@@ -124,18 +129,20 @@ export default function Home() {
 
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Delete link</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Manage link</p>
               <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Save this</span>
             </div>
-            <p className="text-xs text-gray-400">Won&apos;t be shown again. Keep it private.</p>
+            <p className="text-xs text-gray-400">
+              Bookmark this to see views or delete later. Keep it private.
+            </p>
             <div className="flex gap-2">
               <input
                 readOnly
-                value={deleteLink}
+                value={manageLink}
                 className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-xs font-mono text-gray-600 border border-gray-200 focus:outline-none"
               />
               <button
-                onClick={() => navigator.clipboard.writeText(deleteLink)}
+                onClick={() => navigator.clipboard.writeText(manageLink)}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
               >
                 Copy

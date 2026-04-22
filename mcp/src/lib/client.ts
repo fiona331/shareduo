@@ -4,6 +4,7 @@ export interface UploadResult {
   slug: string;
   secret_token: string;
   preview_url: string;
+  manage_url?: string; // optional: server may not set this in older deploys
   delete_url: string;
   expires_at: string;
 }

@@ -78,6 +78,13 @@ export async function handlePushArtifact(args: unknown) {
   const { html, password, expires_in } = InputSchema.parse(args);
   const result = await uploadArtifact(html, password, expires_in);
 
+  const manageLine = result.manage_url
+    ? `**Manage URL:** ${result.manage_url}\n`
+    : "";
+  const hint = result.manage_url
+    ? `_Save the manage URL — open it anytime to see views, or to delete this artifact._`
+    : `_Save the secret token if you want to delete this artifact later._`;
+
   return {
     content: [
       {
@@ -85,10 +92,11 @@ export async function handlePushArtifact(args: unknown) {
         text:
           `✅ Artifact uploaded successfully!\n\n` +
           `**Preview URL:** ${result.preview_url}\n` +
+          manageLine +
           `**Slug:** ${result.slug}\n` +
           `**Expires in:** ${formatExpiry(result.expires_at)}\n` +
           `**Secret token:** ${result.secret_token}\n\n` +
-          `_Save the secret token if you want to delete this artifact later._`,
+          hint,
       },
     ],
   };

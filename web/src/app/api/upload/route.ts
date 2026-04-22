@@ -136,12 +136,18 @@ export async function POST(req: NextRequest) {
 
   const previewBase =
     process.env.PREVIEW_BASE_URL ?? "http://localhost:3001";
+  // SHAREDUO_PUBLIC_URL is the web app's own public URL (shareduo.com).
+  // Fall back to the request origin so this works in dev without config.
+  const webBase =
+    process.env.SHAREDUO_PUBLIC_URL ??
+    new URL(req.url).origin;
 
   return NextResponse.json({
     slug,
     secret_token: rawToken,
     preview_url: `${previewBase}/${slug}`,
-    delete_url: `/api/${slug}`,
+    manage_url: `${webBase}/manage/${slug}?token=${rawToken}`,
+    delete_url: `/api/${slug}`, // legacy: the DELETE API endpoint (not a page)
     expires_at: expiresAt.toISOString(),
   });
 }
