@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import express from "express";
+import cors from "cors";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -68,6 +69,19 @@ function createMcpServer(): Server {
 // ---------------------------------------------------------------------------
 
 const app = express();
+
+// CORS — must come before auth middleware so preflight OPTIONS succeeds.
+// MCP clients use custom headers (Mcp-Session-Id, Last-Event-ID) and need
+// to read Mcp-Session-Id off responses to resume sessions.
+app.use(
+  cors({
+    origin: true, // reflect request origin
+    credentials: true,
+    exposedHeaders: ["Mcp-Session-Id", "WWW-Authenticate"],
+    allowedHeaders: ["Content-Type", "Authorization", "Mcp-Session-Id", "Last-Event-ID"],
+  })
+);
+
 app.use(express.json());
 
 // Mount OAuth endpoints (/.well-known/*, /authorize GET, /token, /revoke)
