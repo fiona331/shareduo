@@ -13,7 +13,7 @@ export const posts: Post[] = [
     title: "How to Share a Claude Artifact With Anyone (No Account Needed)",
     description:
       "Claude's Publish button creates a link — but viewers need a Claude account to open it. Here's how to share a Claude artifact with anyone, no login required.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p>You built something great in Claude — a dashboard, a game, a data visualization — and you want to share it. You hit <strong>Publish</strong>, copy the link, and send it. Then your friend replies: <em>"It's asking me to log in."</em></p>
@@ -64,7 +64,7 @@ export const posts: Post[] = [
     title: "How to Get a Shareable Link for Any Claude Artifact",
     description:
       "Want a link to a Claude artifact that actually works for everyone? Here's the fastest way to get a public, shareable URL for any HTML artifact.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p>Getting a shareable link for a Claude artifact sounds simple — and Claude does have a Publish button. But the link it creates only works for people with a Claude account. If you want a link that <em>actually</em> works for everyone, you need one more step.</p>
@@ -117,7 +117,7 @@ export const posts: Post[] = [
     title: "How to Export and Share a Claude HTML Artifact",
     description:
       "Step-by-step guide to exporting an HTML artifact from Claude and sharing it as a public link anyone can open.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p>Claude can build impressive HTML artifacts — interactive charts, calculators, games, dashboards — but getting them out of Claude and sharing them publicly takes a couple of steps. Here's exactly how to do it.</p>
@@ -173,7 +173,7 @@ export const posts: Post[] = [
     title: "Why Claude Artifacts Don't Work for People Without Claude — and the Fix",
     description:
       "If you shared a Claude artifact link and your recipient sees a login screen instead of the artifact, here's why it happens and the fastest fix.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p>You shared a Claude artifact link. Your recipient clicked it and got a login screen. The artifact isn't broken — it's a fundamental limitation of how Claude shares content. Here's what's happening and how to fix it in under a minute.</p>
@@ -224,7 +224,7 @@ export const posts: Post[] = [
     title: "The Fastest Way to Share an HTML File Online (Free, No Signup)",
     description:
       "Need a quick public URL for an HTML file? Here's the fastest way to share any HTML file online for free — no account, no configuration, no hosting setup.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "2 min read",
     content: `
 <p>You have an HTML file and you need a public URL for it. Maybe it's a Claude artifact, a prototype, a demo page, or a quick visualization. You don't want to configure a server, set up Netlify, or create another account somewhere.</p>
@@ -276,7 +276,7 @@ export const posts: Post[] = [
     title: "Can I Share a Claude Artifact?",
     description:
       "Yes — but Claude's built-in sharing only works for people with a Claude account. Here's how to share a Claude artifact with anyone.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p><strong>Yes, you can share a Claude artifact</strong> — but there's an important catch with Claude's built-in sharing that trips up most people.</p>
@@ -338,7 +338,7 @@ export const posts: Post[] = [
     title: "What Does 'Publish Artifact' Mean in Claude?",
     description:
       "Claude's Publish Artifact feature creates a shareable link — but there's a catch most people don't notice until it's too late.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p>When you create an HTML artifact in Claude, you'll see a <strong>Publish</strong> button (sometimes shown as a share icon) in the artifact panel. Here's exactly what it does — and what it doesn't do.</p>
@@ -383,7 +383,7 @@ export const posts: Post[] = [
     title: "Claude Artifacts Not Working? Here's the Fix",
     description:
       "If your Claude artifact isn't loading, isn't rendering correctly, or your shared link isn't working for others, here's how to diagnose and fix the most common issues.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "4 min read",
     content: `
 <p>Claude artifacts can break in a few different ways. Here are the most common problems and how to fix each one.</p>
@@ -436,7 +436,7 @@ export const posts: Post[] = [
     title: "How to Download and Export a Claude Artifact",
     description:
       "Three ways to download or export any Claude artifact as an HTML file — and what to do with it once you have it.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "3 min read",
     content: `
 <p>Claude artifacts are HTML files. Getting them out of Claude is straightforward once you know where to look. Here are three methods, from easiest to most manual.</p>
@@ -499,7 +499,7 @@ export const posts: Post[] = [
     title: "Claude Artifact Examples and Use Cases",
     description:
       "What can Claude actually build as an artifact? A rundown of the most useful types with examples — and how to share them with anyone.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "4 min read",
     content: `
 <p>Claude artifacts are fully functional HTML applications that run directly in the browser. Here's a tour of the most useful types — and for each one, how to share it with people who don't have Claude.</p>
@@ -556,7 +556,7 @@ export const posts: Post[] = [
     title: "5 Ways to Share a Claude Artifact (Compared)",
     description:
       "Claude's built-in sharing, ShareDuo, tiiny.host, Netlify Drop, and GitHub Pages — compared side by side so you can pick the right tool for your situation.",
-    date: "2025-04-22",
+    date: "2026-04-22",
     readingTime: "5 min read",
     content: `
 <p>You've built something useful in Claude and want to share it. There are five realistic options — each with different trade-offs. Here's an honest comparison.</p>
