@@ -41,6 +41,61 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
+// ---------------------------------------------------------------------------
+// Security headers for user-rendered HTML
+// ---------------------------------------------------------------------------
+//
+// ShareDuo serves arbitrary user HTML on preview.shareduo.com. The subdomain
+// isolates cookies/localStorage from the web app — but we still need CSP to
+// defend against clickjacking, base-tag hijacking, and plugin-based attacks,
+// and to shrink the blast radius if a malicious artifact slips past abuse
+// detection.
+//
+// Policy design tradeoff: Claude-generated artifacts routinely load CDN
+// scripts (Tailwind, Chart.js, etc.), Google Fonts, remote images, and make
+// fetch() calls to public APIs. Hard-locking default-src to 'self' would
+// break the product. Allowing https: for most resources preserves utility;
+// locking form-action, frame-ancestors, base-uri, and object-src shuts
+// down the attacks we actually care about (phishing forms, clickjacking,
+// <base> href hijacking, Flash-era plugins).
+
+const CSP_DIRECTIVES = [
+  "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:",
+  "frame-ancestors 'none'",       // no embedding our preview in someone else's iframe
+  "form-action 'self'",           // forms can only submit back to us (kills off-site phishing)
+  "base-uri 'self'",              // prevent <base href="evil"> hijacking of relative links
+  "object-src 'none'",            // no Flash/plugins
+  "upgrade-insecure-requests",    // force https for any subresource
+].join("; ");
+
+const PERMISSIONS_POLICY = [
+  "camera=()",
+  "microphone=()",
+  "geolocation=()",
+  "payment=()",
+  "usb=()",
+  "magnetometer=()",
+  "gyroscope=()",
+  "accelerometer=()",
+  "interest-cohort=()",
+].join(", ");
+
+function applySecurityHeaders(c: {
+  header: (name: string, value: string) => void;
+}) {
+  c.header("Content-Type", "text/html; charset=utf-8");
+  c.header("Content-Security-Policy", CSP_DIRECTIVES);
+  c.header("Permissions-Policy", PERMISSIONS_POLICY);
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY"); // legacy twin of frame-ancestors 'none'
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("Cross-Origin-Opener-Policy", "same-origin");
+  c.header("Cross-Origin-Resource-Policy", "same-site");
+  c.header("Cache-Control", "no-store");
+  c.header("X-Robots-Tag", "noindex, nofollow");
+  // Never set cookies on this domain — previews must stay stateless
+}
+
 function errorPage(title: string, message: string): string {
   title = escapeHtml(title);
   message = escapeHtml(message);
@@ -186,20 +241,7 @@ app.get("/:slug", async (c) => {
     );
   }
 
-  // Security headers — set before returning
-  c.header("Content-Type", "text/html; charset=utf-8");
-  c.header("X-Content-Type-Options", "nosniff");
-  c.header("Referrer-Policy", "no-referrer");
-  c.header("X-Frame-Options", "SAMEORIGIN");
-  c.header(
-    "Content-Security-Policy",
-    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors 'none'; form-action 'none'"
-  );
-  c.header("Cache-Control", "no-store");
-  c.header("X-Robots-Tag", "noindex, nofollow");
-  // Never set cookies on this domain
-
-  // Prepend abuse bar as a separate HTML block before the user's doctype
+  applySecurityHeaders(c);
   return c.body(userHtml, 200);
 });
 
@@ -250,14 +292,7 @@ app.post("/:slug", async (c) => {
     return c.html(errorPage("Error", "Could not load artifact content."), 500);
   }
 
-  c.header("Content-Type", "text/html; charset=utf-8");
-  c.header("X-Content-Type-Options", "nosniff");
-  c.header("Referrer-Policy", "no-referrer");
-  c.header("X-Frame-Options", "SAMEORIGIN");
-  c.header("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors 'none'; form-action 'none'");
-  c.header("Cache-Control", "no-store");
-  c.header("X-Robots-Tag", "noindex, nofollow");
-
+  applySecurityHeaders(c);
   return c.body(userHtml, 200);
 });
 
