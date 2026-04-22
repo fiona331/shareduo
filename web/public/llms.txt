@@ -39,4 +39,4 @@ MCP server URL: https://mcp.shareduo.com
 - Homepage: https://www.shareduo.com
 - GitHub: https://github.com/fiona331/shareduo
 - MCP server: https://mcp.shareduo.com
-- Contact: hello@shareduo.com
+- Contact: fiona@tf9ventures.com

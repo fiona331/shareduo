@@ -38,7 +38,7 @@ const jsonLd = {
     "@type": "Organization",
     name: "ShareDuo",
     url: "https://www.shareduo.com",
-    email: "hello@shareduo.com",
+    email: "fiona@tf9ventures.com",
   },
 };
 

@@ -80,8 +80,8 @@ export default async function BlogPost({ params }: Props) {
       <footer className="text-center py-8 border-t border-gray-100">
         <p className="text-xs text-gray-300">
           Made with ♥ in San Francisco ·{" "}
-          <a href="mailto:hello@shareduo.com" className="hover:text-gray-400 transition-colors">
-            hello@shareduo.com
+          <a href="mailto:fiona@tf9ventures.com" className="hover:text-gray-400 transition-colors">
+            fiona@tf9ventures.com
           </a>
         </p>
       </footer>

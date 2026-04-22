@@ -97,7 +97,7 @@ export default async function ManagePage(props: PageProps) {
             <p className="text-xs text-red-700 mt-0.5">
               Flagged {relativeTime(share.abuse_flagged_at)}. The preview now shows a
               removal notice to viewers. If you believe this is a mistake, contact{" "}
-              <a href="mailto:hello@shareduo.com" className="underline">hello@shareduo.com</a>.
+              <a href="mailto:fiona@tf9ventures.com" className="underline">fiona@tf9ventures.com</a>.
             </p>
           </div>
         )}

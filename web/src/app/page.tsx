@@ -441,7 +441,7 @@ export default function Home() {
         </p>
         <p className="text-xs text-gray-300">
           Made with ♥ in San Francisco ·{" "}
-          <a href="mailto:hello@shareduo.com" className="hover:text-gray-400 transition-colors">
+          <a href="mailto:fiona@tf9ventures.com" className="hover:text-gray-400 transition-colors">
             Send feedback
           </a>
         </p>
