@@ -11,6 +11,10 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import {
+  InvalidGrantError,
+  InvalidTokenError,
+} from "@modelcontextprotocol/sdk/server/auth/errors.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -208,7 +212,7 @@ export function createOAuthProvider(): OAuthServerProvider {
     ): Promise<string> {
       const record = authCodes.get(authorizationCode);
       if (!record || Date.now() > record.expiresAt) {
-        throw new Error("Invalid or expired authorization code");
+        throw new InvalidGrantError("Invalid or expired authorization code");
       }
       return record.codeChallenge;
     },
@@ -219,7 +223,7 @@ export function createOAuthProvider(): OAuthServerProvider {
     ): Promise<OAuthTokens> {
       const record = authCodes.get(authorizationCode);
       if (!record || Date.now() > record.expiresAt) {
-        throw new Error("Invalid or expired authorization code");
+        throw new InvalidGrantError("Invalid or expired authorization code");
       }
       authCodes.delete(authorizationCode);
 
@@ -250,7 +254,7 @@ export function createOAuthProvider(): OAuthServerProvider {
     ): Promise<OAuthTokens> {
       const record = refreshTokens.get(refreshToken);
       if (!record || Date.now() > record.expiresAt || record.clientId !== client.client_id) {
-        throw new Error("Invalid or expired refresh token");
+        throw new InvalidGrantError("Invalid or expired refresh token");
       }
       refreshTokens.delete(refreshToken);
 
@@ -278,7 +282,7 @@ export function createOAuthProvider(): OAuthServerProvider {
     async verifyAccessToken(token: string): Promise<AuthInfo> {
       const record = accessTokens.get(token);
       if (!record || Date.now() > record.expiresAt) {
-        throw new Error("Invalid or expired access token");
+        throw new InvalidTokenError("Invalid or expired access token");
       }
       return {
         token,
