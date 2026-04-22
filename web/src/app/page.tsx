@@ -172,7 +172,7 @@ export default function Home() {
       result.manage_url ??
       `${window.location.origin}/manage/${result.slug}?token=${result.secret_token}`;
     return (
-      <main className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 flex items-center justify-center p-6">
+      <main className="min-h-screen bg-gradient-to-br from-white via-violet-50 to-indigo-100 flex items-center justify-center p-6">
         <div className="max-w-lg w-full space-y-4">
 
           <div className="text-center pb-2">
@@ -255,7 +255,7 @@ export default function Home() {
   // ── Upload state ───────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-violet-50 to-indigo-100">
 
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto">
