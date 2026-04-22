@@ -23,8 +23,6 @@ import "./lib/env.js";
 // ---------------------------------------------------------------------------
 
 const oauthProvider = createOAuthProvider();
-// MCP_BASE_URL is this server's own public URL (used for OAuth metadata/issuer)
-// SHAREDUO_BASE_URL is the ShareDuo web app URL (used for uploading artifacts)
 const ISSUER_URL = new URL(process.env.MCP_BASE_URL ?? "https://mcp.shareduo.com");
 
 // ---------------------------------------------------------------------------
@@ -72,7 +70,7 @@ function createMcpServer(): Server {
 const app = express();
 app.use(express.json());
 
-// Mount OAuth endpoints at root (/.well-known/*, /authorize, /token, /revoke)
+// Mount OAuth endpoints (/.well-known/*, /authorize GET, /token, /revoke)
 app.use(
   mcpAuthRouter({
     provider: oauthProvider,
@@ -81,7 +79,7 @@ app.use(
   })
 );
 
-// Password form submission — validates SHAREDUO_MCP_TOKEN, issues auth code, redirects back
+// Password form submission — POST /authorize handled here (mcpAuthRouter owns GET)
 app.post("/authorize", express.urlencoded({ extended: false }), (req, res) => {
   const { token, code_challenge, redirect_uri, state } = req.body as Record<string, string>;
 
@@ -105,17 +103,14 @@ app.post("/authorize", express.urlencoded({ extended: false }), (req, res) => {
   res.redirect(redirectUrl.toString());
 });
 
-// Bearer auth middleware — validates access tokens issued by our OAuth server
+// Bearer auth middleware
 const bearerAuth = requireBearerAuth({
   verifier: oauthProvider,
-  resourceMetadataUrl: new URL(
-    "/.well-known/oauth-protected-resource",
-    ISSUER_URL
-  ).toString(),
+  resourceMetadataUrl: new URL("/.well-known/oauth-protected-resource", ISSUER_URL).toString(),
 });
 
 // ---------------------------------------------------------------------------
-// Session stores
+// Session store — both transport types keyed by session ID
 // ---------------------------------------------------------------------------
 
 type AnyTransport = StreamableHTTPServerTransport | SSEServerTransport;
@@ -125,9 +120,7 @@ const sessions = new Map<string, AnyTransport>();
 // Health + favicon (no auth)
 // ---------------------------------------------------------------------------
 
-app.get("/health", (_req, res) => {
-  res.json({ ok: true });
-});
+app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.get("/favicon.svg", (_req, res) => {
   res.setHeader("Content-Type", "image/svg+xml");
@@ -141,67 +134,67 @@ app.get("/favicon.svg", (_req, res) => {
 </svg>`);
 });
 
-app.get("/favicon.ico", (_req, res) => {
-  res.redirect("/favicon.svg");
-});
+app.get("/favicon.ico", (_req, res) => res.redirect("/favicon.svg"));
 
 // ---------------------------------------------------------------------------
-// Streamable HTTP transport (protocol 2025-11-25) — used by claude.ai/Cowork
-// POST/GET/DELETE /mcp
+// Root endpoint — smart dispatch based on method and headers
+//
+// Streamable HTTP (protocol 2025-11-25, used by claude.ai / Cowork):
+//   POST  /   initialize or send (no session ID = new session)
+//   GET   /   open SSE stream for server→client messages  (has Mcp-Session-Id)
+//   DELETE /  terminate session
+//
+// Legacy SSE (protocol 2024-11-05, used by Claude Code CLI):
+//   GET   /   establish SSE stream (no Mcp-Session-Id header)
+//   POST  /messages  send message
 // ---------------------------------------------------------------------------
 
-app.all("/mcp", bearerAuth, async (req, res) => {
+app.all("/", bearerAuth, async (req, res) => {
   try {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
+    // ── Streamable HTTP: resume existing session ──────────────────────────
     if (sessionId && sessions.has(sessionId)) {
-      const existing = sessions.get(sessionId)!;
-      if (!(existing instanceof StreamableHTTPServerTransport)) {
-        res.status(400).json({ error: "Session uses a different transport" });
+      const transport = sessions.get(sessionId)!;
+      if (transport instanceof StreamableHTTPServerTransport) {
+        await transport.handleRequest(req, res, req.body);
         return;
       }
-      await existing.handleRequest(req, res, req.body);
+      // SSE session ID collision — shouldn't happen, but guard anyway
+      res.status(400).json({ error: "Session uses a different transport" });
       return;
     }
 
-    if (!sessionId && req.method === "POST" && isInitializeRequest(req.body)) {
-      const transport = new StreamableHTTPServerTransport({
+    // ── Streamable HTTP: new session (POST with initialize request) ───────
+    if (req.method === "POST" && isInitializeRequest(req.body)) {
+      const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sid) => {
-          sessions.set(sid, transport);
-        },
+        onsessioninitialized: (sid: string) => { sessions.set(sid, transport); },
       });
       transport.onclose = () => {
         if (transport.sessionId) sessions.delete(transport.sessionId);
       };
-      const server = createMcpServer();
-      await server.connect(transport);
+      await createMcpServer().connect(transport);
       await transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // ── Legacy SSE: GET with no session ID → establish SSE stream ─────────
+    if (req.method === "GET" && !sessionId) {
+      const transport = new SSEServerTransport("/messages", res);
+      sessions.set(transport.sessionId, transport);
+      res.on("close", () => sessions.delete(transport.sessionId));
+      await createMcpServer().connect(transport);
       return;
     }
 
     res.status(400).json({ error: "Invalid request" });
   } catch (err) {
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error" });
-    }
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ---------------------------------------------------------------------------
-// SSE transport (protocol 2024-11-05) — used by Claude Code CLI
-// GET / establishes stream, POST /messages sends messages
-// ---------------------------------------------------------------------------
-
-app.get("/", bearerAuth, async (req, res) => {
-  const transport = new SSEServerTransport("/messages", res);
-  sessions.set(transport.sessionId, transport);
-  res.on("close", () => sessions.delete(transport.sessionId));
-
-  const server = createMcpServer();
-  await server.connect(transport);
-});
-
+// Legacy SSE: POST /messages — send message to existing SSE session
 app.post("/messages", bearerAuth, async (req, res) => {
   const sessionId = req.query.sessionId as string;
   const transport = sessions.get(sessionId);
