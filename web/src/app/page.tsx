@@ -254,8 +254,59 @@ export default function Home() {
 
   // ── Upload state ───────────────────────────────────────────────────────────
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Is my file stored permanently?",
+        acceptedAnswer: { "@type": "Answer", text: "No. Every artifact expires automatically based on the window you choose — 1 hour to 30 days. After expiry the file is deleted from storage. You can also delete it early at any time from your manage page." },
+      },
+      {
+        "@type": "Question",
+        name: "Who can see my file?",
+        acceptedAnswer: { "@type": "Answer", text: "Only people with the link. Nothing is indexed, listed, or shared publicly. Add a password to restrict access further — only people with both the link and the password can view it." },
+      },
+      {
+        "@type": "Question",
+        name: "Do you need my email or account?",
+        acceptedAnswer: { "@type": "Answer", text: "No. Nothing is stored about you as the uploader — no email, no name, no account. The only thing linking you to your artifact is the manage link you keep after uploading." },
+      },
+      {
+        "@type": "Question",
+        name: "What file types does ShareDuo support?",
+        acceptedAnswer: { "@type": "Answer", text: "HTML files only (.html). If you have a Claude artifact, download it from Claude or ask Claude to output the full HTML code. Max file size is 5 MB." },
+      },
+      {
+        "@type": "Question",
+        name: "What's the difference between the preview link and the manage link?",
+        acceptedAnswer: { "@type": "Answer", text: "The preview link is what you share — anyone with it can view your artifact. The manage link is private and only for you — it shows view counts and lets you delete the artifact." },
+      },
+      {
+        "@type": "Question",
+        name: "Is ShareDuo free?",
+        acceptedAnswer: { "@type": "Answer", text: "Yes, completely free. No paid plans, no credit card, no account required." },
+      },
+      {
+        "@type": "Question",
+        name: "Does the preview work on mobile?",
+        acceptedAnswer: { "@type": "Answer", text: "Yes. The preview runs in a standard browser on any device. Whether it looks good depends on whether the artifact is responsive — Claude-generated artifacts usually are." },
+      },
+      {
+        "@type": "Question",
+        name: "Can I embed a ShareDuo artifact in another page?",
+        acceptedAnswer: { "@type": "Answer", text: "Yes — use an <iframe> with the preview URL as the src. Set width and height to match your layout." },
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-violet-50 to-indigo-100">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto">
@@ -396,6 +447,30 @@ export default function Home() {
             >
               {uploading ? "Uploading…" : "Upload & share"}
             </button>
+
+            {/* Trust strip */}
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1">
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                No account or email needed
+              </span>
+              <span className="text-gray-200 text-xs hidden sm:inline">·</span>
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Auto-deletes after expiry
+              </span>
+              <span className="text-gray-200 text-xs hidden sm:inline">·</span>
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete anytime
+              </span>
+            </div>
           </div>
         </div>
 
@@ -432,6 +507,66 @@ export default function Home() {
           </div>
         </div>
 
+        {/* FAQ */}
+        <div className="w-full max-w-3xl mt-16">
+          <h2 className="text-center text-sm font-semibold text-gray-500 uppercase tracking-widest mb-8">
+            FAQ
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-7">
+
+            {/* Security & Privacy */}
+            <div className="space-y-6">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Security &amp; Privacy</p>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Is my file stored permanently?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">No. Every artifact expires automatically based on the window you choose — 1 hour to 30 days. After expiry the file is deleted from storage. You can also delete it early at any time from your manage page.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Who can see my file?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">Only people with the link. Nothing is indexed, listed, or shared publicly. Add a password to restrict access further — only people with both the link and the password can view it.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Do you need my email or account?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">No. Nothing is stored about you as the uploader — no email, no name, no account. The only thing linking you to your artifact is the manage link you keep after uploading.</p>
+              </div>
+            </div>
+
+            {/* Using ShareDuo */}
+            <div className="space-y-6">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Using ShareDuo</p>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">What file types does ShareDuo support?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">HTML files only (.html). If you have a Claude artifact, download it from Claude or ask Claude to output the full HTML code. Max file size is 5 MB.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">What&apos;s the difference between the preview link and the manage link?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">The preview link is what you share — anyone with it can view your artifact. The manage link is private and only for you — it shows view counts and lets you delete the artifact.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Is ShareDuo free?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">Yes, completely free. No paid plans, no credit card, no account required.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Does the preview work on mobile?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">Yes. The preview runs in a standard browser on any device. Whether it looks good depends on whether the artifact is responsive — Claude-generated artifacts usually are.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Can I embed a ShareDuo artifact in another page?</p>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">Yes — use an &lt;iframe&gt; with the preview URL as the src. Set width and height to match your layout.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </main>
 
       {/* Footer */}
@@ -441,6 +576,10 @@ export default function Home() {
         </p>
         <p className="text-xs text-gray-300">
           Made with ♥ in San Francisco ·{" "}
+          <a href="https://github.com/fiona331/shareduo" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">
+            Open source
+          </a>
+          {" "}·{" "}
           <a href="mailto:fiona@tf9ventures.com" className="hover:text-gray-400 transition-colors">
             Send feedback
           </a>
