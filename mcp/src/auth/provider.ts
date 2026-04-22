@@ -159,6 +159,10 @@ export function passwordPageHtml(params: {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Connect to ShareDuo</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:title" content="Connect to ShareDuo">
+  <meta property="og:description" content="Authorize Claude to push HTML artifacts to ShareDuo.">
+  <meta property="og:image" content="https://mcp.shareduo.com/favicon.svg">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#fff 0%,#f9fafb 50%,#eff6ff 100%);

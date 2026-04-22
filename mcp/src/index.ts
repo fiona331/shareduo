@@ -200,19 +200,26 @@ const sessions = new Map<string, AnyTransport>();
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.get("/favicon.svg", (_req, res) => {
-  res.setHeader("Content-Type", "image/svg+xml");
-  // Paper airplane — classic "send/share" symbol. Dark rounded background
-  // matches the brand; white wing + blue fold accent reads clearly even at
-  // 16px where the connector icon actually renders.
-  res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+// Paper airplane — classic "send/share" symbol. Dark rounded background
+// matches the brand; white wing + blue fold accent reads clearly even at
+// 16px where the connector icon actually renders.
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="8" fill="#111827"/>
   <path d="M 7 16 L 25 8 L 19 25 L 15.5 18 Z" fill="#ffffff"/>
   <path d="M 7 16 L 15.5 18 L 19 25 Z" fill="#60a5fa"/>
-</svg>`);
-});
+</svg>`;
 
-app.get("/favicon.ico", (_req, res) => res.redirect("/favicon.svg"));
+function serveFavicon(_req: express.Request, res: express.Response) {
+  // Serve SVG bytes directly at both /favicon.svg AND /favicon.ico — many
+  // scrapers (including claude.ai's connector UI) request /favicon.ico and
+  // don't follow redirects. Modern clients accept SVG regardless of filename.
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(FAVICON_SVG);
+}
+
+app.get("/favicon.svg", serveFavicon);
+app.get("/favicon.ico", serveFavicon);
 
 // ---------------------------------------------------------------------------
 // Root endpoint — smart dispatch based on method and headers
