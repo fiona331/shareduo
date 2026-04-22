@@ -93,10 +93,14 @@ SHAREDUO_BASE_URL=https://www.shareduo.com
 MCP_BASE_URL=https://mcp.yourdomain.com
 SHAREDUO_MCP_TOKEN=<random 32-byte hex — generate with: openssl rand -hex 32>
 SHAREDUO_DEFAULT_PASSWORD=
+UPSTASH_REDIS_REST_URL=<same as Vercel>
+UPSTASH_REDIS_REST_TOKEN=<same as Vercel>
 ```
 
 Build command: `npm install && npm run build`
 Start command: `node dist/index.js`
+
+> Without Upstash Redis the MCP server falls back to in-memory OAuth state, which is lost on every restart — every connected Claude user has to re-authenticate. Strongly recommended to set it in production.
 
 ## Using the MCP server
 
@@ -160,6 +164,8 @@ Then just say **"push this to ShareDuo"** and Claude will upload the artifact an
 | `MCP_BASE_URL` | Yes | Public URL of the MCP server itself (e.g. `https://mcp.yourdomain.com`). Used as the OAuth issuer |
 | `SHAREDUO_MCP_TOKEN` | Yes | Shared secret. Each user enters this on the password page during OAuth |
 | `SHAREDUO_DEFAULT_PASSWORD` | No | Default password applied to all MCP uploads when the caller doesn't specify one |
+| `UPSTASH_REDIS_REST_URL` | Recommended | Persist OAuth state (tokens, dynamic clients) across restarts. Omit to use in-memory |
+| `UPSTASH_REDIS_REST_TOKEN` | Recommended | Paired with `UPSTASH_REDIS_REST_URL` |
 
 ## Taking down abusive content
 

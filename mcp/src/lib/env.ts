@@ -11,4 +11,9 @@ export const env = {
   defaultPassword: process.env.SHAREDUO_DEFAULT_PASSWORD ?? "",
   // SHAREDUO_MCP_TOKEN is required for OAuth client authentication
   mcpToken:        requireEnv("SHAREDUO_MCP_TOKEN"),
+  // Upstash Redis — optional. When set, OAuth state (auth codes, tokens,
+  // dynamic clients) persists across restarts. Falls back to in-memory
+  // when unset (fine for local dev; loses all sessions on restart).
+  upstashRedisUrl:   process.env.UPSTASH_REDIS_REST_URL   ?? "",
+  upstashRedisToken: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
 };

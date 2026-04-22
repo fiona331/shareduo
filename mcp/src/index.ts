@@ -142,7 +142,7 @@ app.use(
 // Password form submission — on a path OUTSIDE /authorize so it doesn't get
 // routed through the SDK's authorization sub-router (which applies rate
 // limiting and its own body parsing that can shadow our handler).
-app.post("/auth-verify", express.urlencoded({ extended: false }), (req, res) => {
+app.post("/auth-verify", express.urlencoded({ extended: false }), async (req, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, string>;
     const token          = body.token          ?? "";
@@ -168,7 +168,7 @@ app.post("/auth-verify", express.urlencoded({ extended: false }), (req, res) => 
       return;
     }
 
-    const code = issueAuthCode(code_challenge, redirect_uri, state || undefined);
+    const code = await issueAuthCode(code_challenge, redirect_uri, state || undefined);
     const redirectUrl = new URL(redirect_uri);
     redirectUrl.searchParams.set("code", code);
     if (state) redirectUrl.searchParams.set("state", state);

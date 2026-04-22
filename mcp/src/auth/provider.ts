@@ -15,6 +15,15 @@ import {
   InvalidGrantError,
   InvalidTokenError,
 } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { store } from "./store.js";
+
+// ---------------------------------------------------------------------------
+// Lifetimes
+// ---------------------------------------------------------------------------
+
+const AUTH_CODE_TTL_SEC    = 10 * 60;                // 10 minutes
+const ACCESS_TOKEN_TTL_SEC = 60 * 60;                // 1 hour
+const REFRESH_TOKEN_TTL_SEC = 30 * 24 * 60 * 60;     // 30 days
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,41 +43,25 @@ function escapeHtml(str: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory stores
+// Public helpers — called by /auth-verify in index.ts after password check
 // ---------------------------------------------------------------------------
 
-interface AuthCodeRecord {
-  codeChallenge: string;
-  redirectUri: string;
-  state?: string;
-  expiresAt: number;
-}
-
-interface TokenRecord {
-  clientId: string;
-  expiresAt: number;
-}
-
-const authCodes    = new Map<string, AuthCodeRecord>();
-const accessTokens  = new Map<string, TokenRecord>();
-const refreshTokens = new Map<string, TokenRecord>();
-
-// ---------------------------------------------------------------------------
-// Public helper — called by POST /authorize in index.ts after password check
-// ---------------------------------------------------------------------------
-
-export function issueAuthCode(
+export async function issueAuthCode(
   codeChallenge: string,
   redirectUri: string,
   state?: string
-): string {
+): Promise<string> {
   const code = generateToken(32);
-  authCodes.set(code, {
-    codeChallenge,
-    redirectUri,
-    state,
-    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-  });
+  await store.setAuthCode(
+    code,
+    {
+      codeChallenge,
+      redirectUri,
+      state,
+      expiresAt: Date.now() + AUTH_CODE_TTL_SEC * 1000,
+    },
+    AUTH_CODE_TTL_SEC
+  );
   return code;
 }
 
@@ -102,13 +95,10 @@ function getStaticClient(): OAuthClientInformationFull {
   };
 }
 
-// In-memory store for dynamically registered clients (claude.ai / Cowork use DCR)
-const dynamicClients = new Map<string, OAuthClientInformationFull>();
-
 const clientsStore: OAuthRegisteredClientsStore = {
-  getClient(clientId) {
+  async getClient(clientId) {
     if (clientId === "shareduo") return getStaticClient();
-    return dynamicClients.get(clientId);
+    return await store.getClient(clientId);
   },
 
   // Dynamic Client Registration (RFC 7591). Security lives in the password
@@ -133,7 +123,7 @@ const clientsStore: OAuthRegisteredClientsStore = {
       client_id_issued_at: Math.floor(Date.now() / 1000),
       token_endpoint_auth_method: "none",
     };
-    dynamicClients.set(client_id, registered);
+    await store.setClient(client_id, registered);
     console.log(
       `[oauth] registerClient → ${client_id} ` +
         `requested_auth=${(client as { token_endpoint_auth_method?: string }).token_endpoint_auth_method} ` +
@@ -209,7 +199,7 @@ export function createOAuthProvider(): OAuthServerProvider {
       return clientsStore;
     },
 
-    // Show password page — actual code issuance happens in POST /authorize
+    // Show password page — actual code issuance happens in POST /auth-verify
     async authorize(
       _client: OAuthClientInformationFull,
       params: AuthorizationParams,
@@ -229,8 +219,8 @@ export function createOAuthProvider(): OAuthServerProvider {
       _client: OAuthClientInformationFull,
       authorizationCode: string
     ): Promise<string> {
-      const record = authCodes.get(authorizationCode);
-      if (!record || Date.now() > record.expiresAt) {
+      const record = await store.getAuthCode(authorizationCode);
+      if (!record) {
         throw new InvalidGrantError("Invalid or expired authorization code");
       }
       return record.codeChallenge;
@@ -240,31 +230,34 @@ export function createOAuthProvider(): OAuthServerProvider {
       client: OAuthClientInformationFull,
       authorizationCode: string
     ): Promise<OAuthTokens> {
-      console.log(`[oauth] exchangeAuthorizationCode client=${client.client_id} code=${authorizationCode.slice(0, 8)}...`);
-      const record = authCodes.get(authorizationCode);
-      if (!record || Date.now() > record.expiresAt) {
-        console.log(`[oauth] exchangeAuthorizationCode FAILED: record=${!!record} expired=${record ? Date.now() > record.expiresAt : false}`);
+      console.log(
+        `[oauth] exchangeAuthorizationCode client=${client.client_id} code=${authorizationCode.slice(0, 8)}...`
+      );
+      const record = await store.getAuthCode(authorizationCode);
+      if (!record) {
+        console.log(`[oauth] exchangeAuthorizationCode FAILED: code not found / expired`);
         throw new InvalidGrantError("Invalid or expired authorization code");
       }
-      authCodes.delete(authorizationCode);
+      await store.deleteAuthCode(authorizationCode);
 
       const accessToken  = generateToken(32);
       const refreshToken = generateToken(32);
-      const expiresIn    = 3600;
 
-      accessTokens.set(accessToken, {
-        clientId: client.client_id,
-        expiresAt: Date.now() + expiresIn * 1000,
-      });
-      refreshTokens.set(refreshToken, {
-        clientId: client.client_id,
-        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-      });
+      await store.setAccessToken(
+        accessToken,
+        { clientId: client.client_id, expiresAt: Date.now() + ACCESS_TOKEN_TTL_SEC * 1000 },
+        ACCESS_TOKEN_TTL_SEC
+      );
+      await store.setRefreshToken(
+        refreshToken,
+        { clientId: client.client_id, expiresAt: Date.now() + REFRESH_TOKEN_TTL_SEC * 1000 },
+        REFRESH_TOKEN_TTL_SEC
+      );
 
       return {
         access_token:  accessToken,
         token_type:    "bearer",
-        expires_in:    expiresIn,
+        expires_in:    ACCESS_TOKEN_TTL_SEC,
         refresh_token: refreshToken,
       };
     },
@@ -273,37 +266,38 @@ export function createOAuthProvider(): OAuthServerProvider {
       client: OAuthClientInformationFull,
       refreshToken: string
     ): Promise<OAuthTokens> {
-      const record = refreshTokens.get(refreshToken);
-      if (!record || Date.now() > record.expiresAt || record.clientId !== client.client_id) {
+      const record = await store.getRefreshToken(refreshToken);
+      if (!record || record.clientId !== client.client_id) {
         throw new InvalidGrantError("Invalid or expired refresh token");
       }
-      refreshTokens.delete(refreshToken);
+      await store.deleteRefreshToken(refreshToken);
 
       const accessToken     = generateToken(32);
       const newRefreshToken = generateToken(32);
-      const expiresIn       = 3600;
 
-      accessTokens.set(accessToken, {
-        clientId: client.client_id,
-        expiresAt: Date.now() + expiresIn * 1000,
-      });
-      refreshTokens.set(newRefreshToken, {
-        clientId: client.client_id,
-        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-      });
+      await store.setAccessToken(
+        accessToken,
+        { clientId: client.client_id, expiresAt: Date.now() + ACCESS_TOKEN_TTL_SEC * 1000 },
+        ACCESS_TOKEN_TTL_SEC
+      );
+      await store.setRefreshToken(
+        newRefreshToken,
+        { clientId: client.client_id, expiresAt: Date.now() + REFRESH_TOKEN_TTL_SEC * 1000 },
+        REFRESH_TOKEN_TTL_SEC
+      );
 
       return {
         access_token:  accessToken,
         token_type:    "bearer",
-        expires_in:    expiresIn,
+        expires_in:    ACCESS_TOKEN_TTL_SEC,
         refresh_token: newRefreshToken,
       };
     },
 
     async verifyAccessToken(token: string): Promise<AuthInfo> {
-      const record = accessTokens.get(token);
-      if (!record || Date.now() > record.expiresAt) {
-        console.log(`[oauth] verifyAccessToken FAILED: tokenPrefix=${token.slice(0, 8)}... known=${!!record} expired=${record ? Date.now() > record.expiresAt : false}`);
+      const record = await store.getAccessToken(token);
+      if (!record) {
+        console.log(`[oauth] verifyAccessToken FAILED: tokenPrefix=${token.slice(0, 8)}... not found / expired`);
         throw new InvalidTokenError("Invalid or expired access token");
       }
       console.log(`[oauth] verifyAccessToken OK client=${record.clientId}`);
@@ -319,8 +313,10 @@ export function createOAuthProvider(): OAuthServerProvider {
       _client: OAuthClientInformationFull,
       request: OAuthTokenRevocationRequest
     ): Promise<void> {
-      accessTokens.delete(request.token);
-      refreshTokens.delete(request.token);
+      // The spec allows revoking either an access or refresh token without
+      // knowing which one it is — try both.
+      await store.deleteAccessToken(request.token);
+      await store.deleteRefreshToken(request.token);
     },
   };
 }
