@@ -119,6 +119,23 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+// Favicon — shown as the connector icon in claude.ai
+app.get("/favicon.svg", (_req, res) => {
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#111827"/>
+  <circle cx="10" cy="10" r="3" fill="white"/>
+  <circle cx="22" cy="16" r="3" fill="white"/>
+  <circle cx="10" cy="22" r="3" fill="white"/>
+  <line x1="10" y1="10" x2="22" y2="16" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="10" y1="22" x2="22" y2="16" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+</svg>`);
+});
+
+app.get("/favicon.ico", (_req, res) => {
+  res.redirect("/favicon.svg");
+});
+
 // SSE endpoint — requires valid Bearer token
 app.get("/", bearerAuth, async (req, res) => {
   const transport = new SSEServerTransport("/messages", res);
