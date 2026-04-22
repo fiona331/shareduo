@@ -70,6 +70,12 @@ function createMcpServer(): Server {
 
 const app = express();
 
+// Railway's edge proxy sets X-Forwarded-For / X-Forwarded-Proto. Without
+// trust proxy, express-rate-limit (used by the MCP SDK auth router on
+// /authorize, /token, /register) throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// and the OAuth endpoints fail. Trust one hop (Railway's edge).
+app.set("trust proxy", 1);
+
 // CORS — must come before auth middleware so preflight OPTIONS succeeds.
 // MCP clients use custom headers (Mcp-Session-Id, Last-Event-ID) and need
 // to read Mcp-Session-Id off responses to resume sessions.
