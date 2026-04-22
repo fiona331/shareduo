@@ -9,9 +9,12 @@ export const pushArtifactSchema = {
     "<html>, <head>, and <body> tags — not plain text, markdown, or a code fragment. " +
     "If the user asks you to share non-HTML content, wrap it in a proper HTML document first " +
     "(with reasonable styling so it's readable in a browser). " +
-    "IMPORTANT: Before calling this tool, always ask the user: 'Do you want to password-protect this artifact? Passwords cannot be added after upload.' " +
+    "IMPORTANT: Before calling this tool, always ask the user TWO things: " +
+    "(1) 'Do you want to password-protect this artifact? Passwords cannot be added after upload.' " +
     "If yes, ask them what password to use. If no, pass an empty string for `password`. " +
-    "Returns the slug, preview URL, and a secret_token needed to delete it later.",
+    "(2) 'How long should this link stay live? 1 hour, 1 day, 7 days, or 30 days (default 30 days).' " +
+    "Pass the matching `expires_in` value; omit it to accept the 30-day default. " +
+    "Returns the slug, preview URL, expiration timestamp, and a secret_token needed to delete it later.",
   inputSchema: {
     type: "object" as const,
     required: ["html"] as string[],
@@ -26,6 +29,13 @@ export const pushArtifactSchema = {
         type: "string",
         description:
           "Optional. Omit = use default password. Empty string = no password. Any other value = custom password.",
+      },
+      expires_in: {
+        type: "string",
+        enum: ["1h", "1d", "7d", "30d"],
+        description:
+          "How long the preview link stays live. Omit to default to 30 days. " +
+          "Use shorter values for one-off shares that shouldn't linger.",
       },
     },
   },
@@ -52,12 +62,21 @@ const InputSchema = z.object({
         "Content doesn't look like HTML. Wrap it in a complete HTML document " +
         "(with <!DOCTYPE html>, <html>, <head>, <body>) before uploading.",
     }),
-  password: z.string().optional(),
+  password:   z.string().optional(),
+  expires_in: z.enum(["1h", "1d", "7d", "30d"]).optional(),
 });
 
+function formatExpiry(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  const hours = Math.round(ms / 3_600_000);
+  if (hours < 24) return `${Math.max(1, hours)}h`;
+  const days = Math.round(hours / 24);
+  return `${days}d`;
+}
+
 export async function handlePushArtifact(args: unknown) {
-  const { html, password } = InputSchema.parse(args);
-  const result = await uploadArtifact(html, password);
+  const { html, password, expires_in } = InputSchema.parse(args);
+  const result = await uploadArtifact(html, password, expires_in);
 
   return {
     content: [
@@ -67,6 +86,7 @@ export async function handlePushArtifact(args: unknown) {
           `✅ Artifact uploaded successfully!\n\n` +
           `**Preview URL:** ${result.preview_url}\n` +
           `**Slug:** ${result.slug}\n` +
+          `**Expires in:** ${formatExpiry(result.expires_at)}\n` +
           `**Secret token:** ${result.secret_token}\n\n` +
           `_Save the secret token if you want to delete this artifact later._`,
       },

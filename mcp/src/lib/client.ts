@@ -5,17 +5,19 @@ export interface UploadResult {
   secret_token: string;
   preview_url: string;
   delete_url: string;
+  expires_at: string;
 }
 
 /**
  * Upload an HTML artifact to ShareDuo.
- * password: undefined  → use SHAREDUO_DEFAULT_PASSWORD
- * password: ""         → no password (public)
- * password: "abc"      → use "abc" as the password
+ * password:   undefined → use SHAREDUO_DEFAULT_PASSWORD, "" → no password,
+ *             string    → use as password
+ * expiresIn:  "1h" | "1d" | "7d" | "30d" (defaults to "30d" server-side)
  */
 export async function uploadArtifact(
   html: string,
-  password: string | undefined
+  password: string | undefined,
+  expiresIn?: string
 ): Promise<UploadResult> {
   const form = new FormData();
   form.append("html", html);
@@ -24,6 +26,9 @@ export async function uploadArtifact(
     password === undefined ? env.defaultPassword : password;
   if (resolvedPassword) {
     form.append("password", resolvedPassword);
+  }
+  if (expiresIn) {
+    form.append("expires_in", expiresIn);
   }
 
   const res = await fetch(`${env.baseUrl}/api/upload`, {

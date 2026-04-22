@@ -1,17 +1,29 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { TTL_OPTIONS, DEFAULT_TTL, type TtlValue } from "@/lib/ttl";
 
 interface UploadResult {
   slug: string;
   secret_token: string;
   preview_url: string;
   delete_url: string;
+  expires_at: string;
+}
+
+function formatExpiry(iso: string): string {
+  const date = new Date(iso);
+  const diffMs = date.getTime() - Date.now();
+  const hours = Math.round(diffMs / (60 * 60 * 1000));
+  if (hours < 24) return `in ~${Math.max(1, hours)}h`;
+  const days = Math.round(hours / 24);
+  return `in ${days} day${days === 1 ? "" : "s"}`;
 }
 
 export default function Home() {
   const [html, setHtml] = useState("");
   const [password, setPassword] = useState("");
+  const [expiresIn, setExpiresIn] = useState<TtlValue>(DEFAULT_TTL);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
@@ -51,6 +63,7 @@ export default function Home() {
     const formData = new FormData();
     formData.append("html", html);
     if (password.trim()) formData.append("password", password.trim());
+    formData.append("expires_in", expiresIn);
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
@@ -79,7 +92,9 @@ export default function Home() {
               </svg>
             </div>
             <h1 className="text-xl font-semibold text-gray-900">Your artifact is live</h1>
-            <p className="text-sm text-gray-500 mt-1">Share the preview link with anyone</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Share the preview link with anyone · Expires {formatExpiry(result.expires_at)}
+            </p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
@@ -223,6 +238,26 @@ export default function Home() {
               />
             </div>
 
+            <div className="space-y-1.5">
+              <label className="text-xs text-gray-400">Expires after</label>
+              <div className="flex gap-1.5">
+                {TTL_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setExpiresIn(opt.value)}
+                    className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                      expiresIn === opt.value
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {error && <p className="text-red-500 text-xs">{error}</p>}
 
             <button
@@ -236,7 +271,7 @@ export default function Home() {
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Kept for 30 days · Max 5 MB · No account needed
+          You choose the lifetime · Max 5 MB · No account needed
         </p>
         <p className="text-center text-xs text-gray-300">
           Made with ♥ in San Francisco ·{" "}

@@ -7,6 +7,7 @@ import { uploadHtml } from "@/lib/storage";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { verifyApiKey } from "@/lib/apikey";
 import { scanForAbuse, ABUSE_BLOCK_SCORE, ABUSE_FLAG_SCORE } from "@/lib/abuse";
+import { ttlToExpiresAt, isValidTtl, DEFAULT_TTL } from "@/lib/ttl";
 
 const SLUG_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -50,11 +51,20 @@ export async function POST(req: NextRequest) {
 
   let html: string;
   let password: string | null = null;
+  let expiresIn: string = DEFAULT_TTL;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const pasted = formData.get("html") as string | null;
     password = formData.get("password") as string | null;
+    const rawExpires = formData.get("expires_in") as string | null;
+    if (rawExpires && !isValidTtl(rawExpires)) {
+      return NextResponse.json(
+        { error: "Invalid expires_in. Allowed: 1h, 1d, 7d, 30d" },
+        { status: 400 }
+      );
+    }
+    if (rawExpires) expiresIn = rawExpires;
 
     if (file) {
       if (file.size > MAX_BYTES) {
@@ -107,7 +117,7 @@ export async function POST(req: NextRequest) {
   const tokenHash = await bcrypt.hash(rawToken, 10);
   const ipHash = createHash("sha256").update(ip).digest("hex");
   const storageKey = `uploads/${slug}.html`;
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const expiresAt = ttlToExpiresAt(expiresIn);
   const passwordHash =
     password && password.trim() ? await bcrypt.hash(password.trim(), 10) : null;
   const abuseFlagged = abuse.score >= ABUSE_FLAG_SCORE ? new Date() : null;
@@ -132,5 +142,6 @@ export async function POST(req: NextRequest) {
     secret_token: rawToken,
     preview_url: `${previewBase}/${slug}`,
     delete_url: `/api/${slug}`,
+    expires_at: expiresAt.toISOString(),
   });
 }
