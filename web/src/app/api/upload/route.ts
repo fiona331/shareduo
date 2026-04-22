@@ -6,6 +6,7 @@ import { shares } from "@/lib/db/schema";
 import { uploadHtml } from "@/lib/storage";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { verifyApiKey } from "@/lib/apikey";
+import { scanForAbuse, ABUSE_BLOCK_SCORE, ABUSE_FLAG_SCORE } from "@/lib/abuse";
 
 const SLUG_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -80,6 +81,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Abuse scan — reject clear-cut malicious content before writing to storage.
+  // Medium-score uploads are allowed but pre-flagged so the preview server
+  // serves them as "removed" and the cleanup cron eventually prunes them.
+  const abuse = scanForAbuse(html);
+  if (abuse.score >= ABUSE_BLOCK_SCORE) {
+    console.warn(
+      `[abuse] blocked upload from ip=${ip.slice(0, 16)} score=${abuse.score}`,
+      abuse.signals
+    );
+    return NextResponse.json(
+      { error: "This content violates ShareDuo's abuse policy and cannot be uploaded." },
+      { status: 422 }
+    );
+  }
+  if (abuse.score >= ABUSE_FLAG_SCORE) {
+    console.warn(
+      `[abuse] flagged upload from ip=${ip.slice(0, 16)} score=${abuse.score}`,
+      abuse.signals
+    );
+  }
+
   const slug = generateSlug();
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = await bcrypt.hash(rawToken, 10);
@@ -88,6 +110,7 @@ export async function POST(req: NextRequest) {
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const passwordHash =
     password && password.trim() ? await bcrypt.hash(password.trim(), 10) : null;
+  const abuseFlagged = abuse.score >= ABUSE_FLAG_SCORE ? new Date() : null;
 
   await uploadHtml(storageKey, html);
 
@@ -98,6 +121,7 @@ export async function POST(req: NextRequest) {
     expires_at: expiresAt,
     uploader_ip_hash: ipHash,
     password_hash: passwordHash,
+    abuse_flagged_at: abuseFlagged,
   });
 
   const previewBase =
