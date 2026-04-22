@@ -124,6 +124,7 @@ const clientsStore: OAuthRegisteredClientsStore = {
       token_endpoint_auth_method: "none",
     };
     dynamicClients.set(client_id, registered);
+    console.log(`[oauth] registerClient → ${client_id} redirect_uris=${JSON.stringify(registered.redirect_uris)}`);
     return registered;
   },
 };
@@ -221,8 +222,10 @@ export function createOAuthProvider(): OAuthServerProvider {
       client: OAuthClientInformationFull,
       authorizationCode: string
     ): Promise<OAuthTokens> {
+      console.log(`[oauth] exchangeAuthorizationCode client=${client.client_id} code=${authorizationCode.slice(0, 8)}...`);
       const record = authCodes.get(authorizationCode);
       if (!record || Date.now() > record.expiresAt) {
+        console.log(`[oauth] exchangeAuthorizationCode FAILED: record=${!!record} expired=${record ? Date.now() > record.expiresAt : false}`);
         throw new InvalidGrantError("Invalid or expired authorization code");
       }
       authCodes.delete(authorizationCode);
@@ -282,8 +285,10 @@ export function createOAuthProvider(): OAuthServerProvider {
     async verifyAccessToken(token: string): Promise<AuthInfo> {
       const record = accessTokens.get(token);
       if (!record || Date.now() > record.expiresAt) {
+        console.log(`[oauth] verifyAccessToken FAILED: tokenPrefix=${token.slice(0, 8)}... known=${!!record} expired=${record ? Date.now() > record.expiresAt : false}`);
         throw new InvalidTokenError("Invalid or expired access token");
       }
+      console.log(`[oauth] verifyAccessToken OK client=${record.clientId}`);
       return {
         token,
         clientId:  record.clientId,

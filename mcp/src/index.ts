@@ -82,6 +82,31 @@ app.use(
   })
 );
 
+// Dev logging — method/path/headers. Body is logged inside handlers we
+// control (below). SDK handlers parse body themselves, so we can't see
+// their body here.
+app.use((req, res, next) => {
+  const p = req.path;
+  if (
+    p === "/" ||
+    p === "/token" ||
+    p === "/register" ||
+    p === "/authorize" ||
+    p === "/auth-verify" ||
+    p === "/messages" ||
+    p.startsWith("/.well-known")
+  ) {
+    const hasAuth = req.headers.authorization ? "✓auth" : "✗auth";
+    const hasSess = req.headers["mcp-session-id"] ? "✓sess" : "";
+    const ct = req.headers["content-type"] ?? "-";
+    console.log(`[req] ${req.method} ${p} ${hasAuth} ${hasSess} ct=${ct}`);
+    res.on("finish", () => {
+      console.log(`[res] ${req.method} ${p} → ${res.statusCode}`);
+    });
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Mount OAuth endpoints (/.well-known/*, /authorize GET, /token, /revoke)
