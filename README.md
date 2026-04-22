@@ -89,7 +89,8 @@ Connect the same repo, set root directory to `/mcp`, and add:
 
 ```
 SHAREDUO_API_KEY=<same key as Vercel>
-SHAREDUO_BASE_URL=https://shareduo.com
+SHAREDUO_BASE_URL=https://www.shareduo.com
+MCP_BASE_URL=https://mcp.yourdomain.com
 SHAREDUO_MCP_TOKEN=<random 32-byte hex — generate with: openssl rand -hex 32>
 SHAREDUO_DEFAULT_PASSWORD=
 ```
@@ -99,7 +100,12 @@ Start command: `node dist/index.js`
 
 ## Using the MCP server
 
-Once deployed, add the ShareDuo connector to Claude Code:
+The MCP server supports both the legacy SSE transport (Claude Code CLI) and
+the newer Streamable HTTP transport (claude.ai / Cowork). Auth is OAuth 2.1
+with dynamic client registration — users just paste the URL and type the
+`SHAREDUO_MCP_TOKEN` into a password page during the OAuth flow.
+
+### Claude Code CLI
 
 ```bash
 claude mcp add shareduo -t sse -s user \
@@ -107,10 +113,14 @@ claude mcp add shareduo -t sse -s user \
   -- https://mcp.yourdomain.com
 ```
 
-Or add it in Claude Cowork / claude.ai via **Add custom connector**:
+### claude.ai / Cowork
+
+Go to **Settings → Connectors → Add custom connector**:
 - **Remote MCP server URL:** `https://mcp.yourdomain.com`
-- **OAuth Client ID:** `shareduo`
-- **OAuth Client Secret:** `<SHAREDUO_MCP_TOKEN>`
+- Leave **OAuth Client ID** and **OAuth Client Secret** blank — the server
+  supports dynamic client registration, so claude.ai registers itself
+- Click **Connect** → you'll be redirected to a password page
+- Enter your `SHAREDUO_MCP_TOKEN` → done
 
 Then just say **"push this to ShareDuo"** and Claude will upload the artifact and return a preview link.
 
@@ -146,9 +156,10 @@ Then just say **"push this to ShareDuo"** and Claude will upload the artifact an
 | Variable | Required | Description |
 |---|---|---|
 | `SHAREDUO_API_KEY` | Yes | Must match the key set on Vercel |
-| `SHAREDUO_BASE_URL` | Yes | Base URL of the web app (e.g. `https://shareduo.com`) |
-| `SHAREDUO_MCP_TOKEN` | Yes | Shared secret for MCP OAuth authentication |
-| `SHAREDUO_DEFAULT_PASSWORD` | No | Default password applied to all MCP uploads |
+| `SHAREDUO_BASE_URL` | Yes | Canonical URL of the web app. Use `https://www.shareduo.com` (the `www.` form) — the apex redirects and breaks POSTs |
+| `MCP_BASE_URL` | Yes | Public URL of the MCP server itself (e.g. `https://mcp.yourdomain.com`). Used as the OAuth issuer |
+| `SHAREDUO_MCP_TOKEN` | Yes | Shared secret. Each user enters this on the password page during OAuth |
+| `SHAREDUO_DEFAULT_PASSWORD` | No | Default password applied to all MCP uploads when the caller doesn't specify one |
 
 ## Taking down abusive content
 
