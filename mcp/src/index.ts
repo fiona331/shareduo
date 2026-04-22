@@ -94,42 +94,6 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Dev logging — path, headers, plus redacted body for /token and /register.
-app.use((req, res, next) => {
-  const p = req.path;
-  if (
-    p === "/" ||
-    p === "/token" ||
-    p === "/register" ||
-    p === "/authorize" ||
-    p === "/auth-verify" ||
-    p === "/messages" ||
-    p.startsWith("/.well-known")
-  ) {
-    const hasAuth = req.headers.authorization ? "✓auth" : "✗auth";
-    const hasSess = req.headers["mcp-session-id"] ? "✓sess" : "";
-    const ct = req.headers["content-type"] ?? "-";
-    console.log(`[req] ${req.method} ${p} ${hasAuth} ${hasSess} ct=${ct}`);
-
-    if (p === "/token" || p === "/register") {
-      const body = { ...(req.body ?? {}) } as Record<string, unknown>;
-      if (body.client_secret) body.client_secret = "***";
-      if (typeof body.code_verifier === "string") {
-        body.code_verifier = `len=${body.code_verifier.length}`;
-      }
-      if (typeof body.code === "string") {
-        body.code = `${body.code.slice(0, 8)}...`;
-      }
-      console.log(`[${p} body]`, JSON.stringify(body));
-    }
-
-    res.on("finish", () => {
-      console.log(`[res] ${req.method} ${p} → ${res.statusCode}`);
-    });
-  }
-  next();
-});
-
 // Mount OAuth endpoints (/.well-known/*, /authorize GET, /token, /revoke)
 app.use(
   mcpAuthRouter({

@@ -124,11 +124,6 @@ const clientsStore: OAuthRegisteredClientsStore = {
       token_endpoint_auth_method: "none",
     };
     await store.setClient(client_id, registered);
-    console.log(
-      `[oauth] registerClient → ${client_id} ` +
-        `requested_auth=${(client as { token_endpoint_auth_method?: string }).token_endpoint_auth_method} ` +
-        `redirect_uris=${JSON.stringify(registered.redirect_uris)}`
-    );
     return registered;
   },
 };
@@ -230,12 +225,8 @@ export function createOAuthProvider(): OAuthServerProvider {
       client: OAuthClientInformationFull,
       authorizationCode: string
     ): Promise<OAuthTokens> {
-      console.log(
-        `[oauth] exchangeAuthorizationCode client=${client.client_id} code=${authorizationCode.slice(0, 8)}...`
-      );
       const record = await store.getAuthCode(authorizationCode);
       if (!record) {
-        console.log(`[oauth] exchangeAuthorizationCode FAILED: code not found / expired`);
         throw new InvalidGrantError("Invalid or expired authorization code");
       }
       await store.deleteAuthCode(authorizationCode);
@@ -297,10 +288,8 @@ export function createOAuthProvider(): OAuthServerProvider {
     async verifyAccessToken(token: string): Promise<AuthInfo> {
       const record = await store.getAccessToken(token);
       if (!record) {
-        console.log(`[oauth] verifyAccessToken FAILED: tokenPrefix=${token.slice(0, 8)}... not found / expired`);
         throw new InvalidTokenError("Invalid or expired access token");
       }
-      console.log(`[oauth] verifyAccessToken OK client=${record.clientId}`);
       return {
         token,
         clientId:  record.clientId,
