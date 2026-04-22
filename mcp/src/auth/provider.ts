@@ -82,7 +82,8 @@ export function checkMcpToken(provided: string): boolean {
 // Registered client — public client (no secret), secured by password page
 // ---------------------------------------------------------------------------
 
-function getRegisteredClient(): OAuthClientInformationFull {
+// Pre-registered static client (for Claude Code CLI / manual config)
+function getStaticClient(): OAuthClientInformationFull {
   return {
     client_id: "shareduo",
     client_id_issued_at: 0,
@@ -93,14 +94,33 @@ function getRegisteredClient(): OAuthClientInformationFull {
     ],
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
-    token_endpoint_auth_method: "none", // public client — secured by password page
+    token_endpoint_auth_method: "none",
   };
 }
 
+// In-memory store for dynamically registered clients (claude.ai / Cowork use DCR)
+const dynamicClients = new Map<string, OAuthClientInformationFull>();
+
 const clientsStore: OAuthRegisteredClientsStore = {
   getClient(clientId) {
-    if (clientId === "shareduo") return getRegisteredClient();
-    return undefined;
+    if (clientId === "shareduo") return getStaticClient();
+    return dynamicClients.get(clientId);
+  },
+
+  // Dynamic Client Registration (RFC 7591). Security lives in the password
+  // page at /authorize — any client may register, but only token-holders
+  // get authorization codes. We force public-client semantics so no secret
+  // is required at /token (claude.ai doesn't send one).
+  async registerClient(client) {
+    const client_id = generateToken(16);
+    const registered: OAuthClientInformationFull = {
+      ...client,
+      client_id,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      token_endpoint_auth_method: "none",
+    };
+    dynamicClients.set(client_id, registered);
+    return registered;
   },
 };
 
@@ -144,7 +164,7 @@ export function passwordPageHtml(params: {
     <h1>Connect to ShareDuo</h1>
     <p class="sub">Enter your access token to connect Claude.</p>
     ${params.error ? `<p class="error">${escapeHtml(params.error)}</p>` : ""}
-    <form method="POST" action="/authorize">
+    <form method="POST" action="/authorize/verify">
       <input type="hidden" name="code_challenge" value="${escapeHtml(params.codeChallenge)}">
       <input type="hidden" name="redirect_uri"   value="${escapeHtml(params.redirectUri)}">
       <input type="hidden" name="state"          value="${escapeHtml(params.state)}">

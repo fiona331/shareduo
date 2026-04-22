@@ -93,8 +93,9 @@ app.use(
   })
 );
 
-// Password form submission — POST /authorize handled here (mcpAuthRouter owns GET)
-app.post("/authorize", express.urlencoded({ extended: false }), (req, res) => {
+// Password form submission — dedicated path so we don't clash with the SDK's
+// POST /authorize handler (which expects an OAuth authorization request body)
+app.post("/authorize/verify", express.urlencoded({ extended: false }), (req, res) => {
   const { token, code_challenge, redirect_uri, state } = req.body as Record<string, string>;
 
   if (!checkMcpToken(token)) {
