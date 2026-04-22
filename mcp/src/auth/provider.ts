@@ -116,15 +116,29 @@ const clientsStore: OAuthRegisteredClientsStore = {
   // get authorization codes. We force public-client semantics so no secret
   // is required at /token (claude.ai doesn't send one).
   async registerClient(client) {
+    // Strip the SDK-generated client_secret before storing. We're a public
+    // client — security is enforced at /authorize via the password page, not
+    // via a client secret. If we leave client_secret on the stored record,
+    // the SDK's authenticateClient middleware will REQUIRE it at /token
+    // and reject requests from clients that honored our advertised
+    // token_endpoint_auth_method: "none".
+    const { client_secret: _cs, client_secret_expires_at: _cse, ...rest } = client as OAuthClientInformationFull & {
+      client_secret?: string;
+      client_secret_expires_at?: number;
+    };
     const client_id = generateToken(16);
     const registered: OAuthClientInformationFull = {
-      ...client,
+      ...rest,
       client_id,
       client_id_issued_at: Math.floor(Date.now() / 1000),
       token_endpoint_auth_method: "none",
     };
     dynamicClients.set(client_id, registered);
-    console.log(`[oauth] registerClient → ${client_id} redirect_uris=${JSON.stringify(registered.redirect_uris)}`);
+    console.log(
+      `[oauth] registerClient → ${client_id} ` +
+        `requested_auth=${(client as { token_endpoint_auth_method?: string }).token_endpoint_auth_method} ` +
+        `redirect_uris=${JSON.stringify(registered.redirect_uris)}`
+    );
     return registered;
   },
 };
