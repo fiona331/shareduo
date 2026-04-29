@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { posts, formatDate } from "@/lib/blog";
+import { getAllPosts, formatDate } from "@/lib/blog";
 
 export const metadata: Metadata = {
   title: "Blog — ShareDuo",
@@ -41,7 +41,7 @@ export default function BlogIndex() {
         </div>
 
         <div className="space-y-3">
-          {posts.map((post) => (
+          {getAllPosts().map((post) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}

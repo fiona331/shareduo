@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
-import { posts } from "@/lib/blog";
+import { getAllPosts } from "@/lib/blog";
 
 const BASE = "https://www.shareduo.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const blogPosts = posts.map((post) => ({
+  const blogPosts = getAllPosts().map((post) => ({
     url: `${BASE}/blog/${post.slug}`,
     lastModified: new Date(post.date),
     changeFrequency: "monthly" as const,
