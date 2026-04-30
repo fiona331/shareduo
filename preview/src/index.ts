@@ -232,9 +232,9 @@ app.get("/:slug", async (c) => {
     );
   }
 
-  if (share.expires_at < new Date()) {
+  if (share.expires_at !== null && share.expires_at < new Date()) {
     return c.html(
-      errorPage("Expired", "This artifact has expired. Artifacts are kept for 30 days."),
+      errorPage("Expired", "This artifact has expired."),
       410
     );
   }
@@ -294,7 +294,7 @@ app.post("/:slug", async (c) => {
     return c.html(errorPage("Not Found", "This artifact does not exist."), 404);
   }
 
-  if (share.expires_at < new Date()) {
+  if (share.expires_at !== null && share.expires_at < new Date()) {
     return c.html(errorPage("Expired", "This artifact has expired."), 410);
   }
 
