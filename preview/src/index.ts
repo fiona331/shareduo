@@ -123,6 +123,51 @@ function incrementViewCount(slug: string, userAgent: string | null | undefined):
     .catch((err) => console.error("[view-count] update failed:", err));
 }
 
+// ---------------------------------------------------------------------------
+// GA / GSC tag injection
+// ---------------------------------------------------------------------------
+//
+// Tags are validated on write (SAFE_TAG_RE on the web API) so we can
+// interpolate them directly here without further escaping.
+
+function injectHeadTags(
+  html: string,
+  gaTag: string | null | undefined,
+  gscTag: string | null | undefined,
+): string {
+  if (!gaTag && !gscTag) return html;
+
+  let snippet = "";
+
+  if (gscTag) {
+    snippet += `<meta name="google-site-verification" content="${gscTag}">\n`;
+  }
+  if (gaTag) {
+    snippet +=
+      `<script async src="https://www.googletagmanager.com/gtag/js?id=${gaTag}"></script>\n` +
+      `<script>window.dataLayer=window.dataLayer||[];` +
+      `function gtag(){dataLayer.push(arguments);}` +
+      `gtag('js',new Date());gtag('config','${gaTag}');</script>\n`;
+  }
+
+  // Prefer injecting just before </head>
+  const lower = html.toLowerCase();
+  const closeHead = lower.indexOf("</head>");
+  if (closeHead !== -1) {
+    return html.slice(0, closeHead) + snippet + html.slice(closeHead);
+  }
+
+  // Fallback: just after opening <head> tag
+  const openHead = lower.match(/<head[^>]*>/);
+  if (openHead?.index !== undefined) {
+    const after = openHead.index + openHead[0].length;
+    return html.slice(0, after) + "\n" + snippet + html.slice(after);
+  }
+
+  // Last resort: prepend
+  return snippet + html;
+}
+
 function errorPage(title: string, message: string): string {
   title = escapeHtml(title);
   message = escapeHtml(message);
@@ -270,7 +315,7 @@ app.get("/:slug", async (c) => {
 
   incrementViewCount(slug, c.req.header("User-Agent"));
   applySecurityHeaders(c, share.noindex ?? true);
-  return c.body(userHtml, 200);
+  return c.body(injectHeadTags(userHtml, share.ga_tag, share.gsc_tag), 200);
 });
 
 app.post("/:slug", async (c) => {
@@ -322,7 +367,7 @@ app.post("/:slug", async (c) => {
 
   incrementViewCount(slug, c.req.header("User-Agent"));
   applySecurityHeaders(c, share.noindex ?? true);
-  return c.body(userHtml, 200);
+  return c.body(injectHeadTags(userHtml, share.ga_tag, share.gsc_tag), 200);
 });
 
 app.get("/", (c) =>
