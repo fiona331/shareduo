@@ -22,6 +22,7 @@ export const shares = pgTable("shares", {
   ga_tag: text("ga_tag"),
   gsc_tag: text("gsc_tag"),
   uploader_email: text("uploader_email"),
+  manage_url: text("manage_url"),
 });
 
 export type Share = typeof shares.$inferSelect;
