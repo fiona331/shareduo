@@ -18,6 +18,7 @@ export const shares = pgTable("shares", {
   password_hash: text("password_hash"),
   view_count: integer("view_count").default(0).notNull(),
   last_viewed_at: timestamp("last_viewed_at"),
+  updated_at: timestamp("updated_at"),
 });
 
 export type Share = typeof shares.$inferSelect;

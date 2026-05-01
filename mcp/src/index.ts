@@ -12,8 +12,9 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { pushArtifactSchema, handlePushArtifact }     from "./tools/push_artifact.js";
-import { deleteArtifactSchema, handleDeleteArtifact } from "./tools/delete_artifact.js";
+import { pushArtifactSchema, handlePushArtifact }       from "./tools/push_artifact.js";
+import { deleteArtifactSchema, handleDeleteArtifact }   from "./tools/delete_artifact.js";
+import { updateArtifactSchema, handleUpdateArtifact }   from "./tools/update_artifact.js";
 import { createOAuthProvider, checkMcpToken, issueAuthCode, passwordPageHtml } from "./auth/provider.js";
 
 // Validate env at startup
@@ -37,7 +38,7 @@ function createMcpServer(): Server {
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: [pushArtifactSchema, deleteArtifactSchema],
+    tools: [pushArtifactSchema, updateArtifactSchema, deleteArtifactSchema],
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -45,6 +46,7 @@ function createMcpServer(): Server {
     try {
       switch (name) {
         case "push_artifact":   return await handlePushArtifact(args);
+        case "update_artifact": return await handleUpdateArtifact(args);
         case "delete_artifact": return await handleDeleteArtifact(args);
         default:
           return {

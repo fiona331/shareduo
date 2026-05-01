@@ -46,6 +46,36 @@ export async function uploadArtifact(
   return res.json() as Promise<UploadResult>;
 }
 
+export interface UpdateResult {
+  preview_url: string;
+  updated_at: string;
+}
+
+export async function updateArtifact(
+  slug: string,
+  secretToken: string,
+  html: string,
+  expiresIn?: string
+): Promise<UpdateResult> {
+  const form = new FormData();
+  form.append("secret_token", secretToken);
+  form.append("html", html);
+  if (expiresIn) form.append("expires_in", expiresIn);
+
+  const res = await fetch(`${env.baseUrl}/api/${encodeURIComponent(slug)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${env.apiKey}` },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Update failed (${res.status}): ${text}`);
+  }
+
+  return res.json() as Promise<UpdateResult>;
+}
+
 export async function deleteArtifact(
   slug: string,
   secretToken: string
