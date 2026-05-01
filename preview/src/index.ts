@@ -81,9 +81,10 @@ const PERMISSIONS_POLICY = [
   "interest-cohort=()",
 ].join(", ");
 
-function applySecurityHeaders(c: {
-  header: (name: string, value: string) => void;
-}) {
+function applySecurityHeaders(
+  c: { header: (name: string, value: string) => void },
+  noindex = true,
+) {
   c.header("Content-Type", "text/html; charset=utf-8");
   c.header("Content-Security-Policy", CSP_DIRECTIVES);
   c.header("Permissions-Policy", PERMISSIONS_POLICY);
@@ -93,7 +94,11 @@ function applySecurityHeaders(c: {
   c.header("Cross-Origin-Opener-Policy", "same-origin");
   c.header("Cross-Origin-Resource-Policy", "same-site");
   c.header("Cache-Control", "no-store");
-  c.header("X-Robots-Tag", "noindex, nofollow");
+  // Respect per-artifact noindex preference. Default is true (hidden), which
+  // matches the historical behaviour of always sending noindex. When the owner
+  // explicitly enables indexing via the manage page, we omit the tag so
+  // search engines can crawl the content.
+  if (noindex) c.header("X-Robots-Tag", "noindex, nofollow");
   // Never set cookies on this domain — previews must stay stateless
 }
 
@@ -264,7 +269,7 @@ app.get("/:slug", async (c) => {
   }
 
   incrementViewCount(slug, c.req.header("User-Agent"));
-  applySecurityHeaders(c);
+  applySecurityHeaders(c, share.noindex ?? true);
   return c.body(userHtml, 200);
 });
 
@@ -316,7 +321,7 @@ app.post("/:slug", async (c) => {
   }
 
   incrementViewCount(slug, c.req.header("User-Agent"));
-  applySecurityHeaders(c);
+  applySecurityHeaders(c, share.noindex ?? true);
   return c.body(userHtml, 200);
 });
 

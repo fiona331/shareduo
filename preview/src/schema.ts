@@ -9,7 +9,7 @@ export const shares = pgTable("shares", {
   user_id: uuid("user_id"),
   storage_key: text("storage_key").notNull(),
   title: text("title"),
-  noindex: boolean("noindex").default(false),
+  noindex: boolean("noindex").default(true).notNull(),
   expires_at: timestamp("expires_at"),
   created_at: timestamp("created_at").default(sql`now()`),
   deleted_at: timestamp("deleted_at"),
